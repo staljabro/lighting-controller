@@ -43,6 +43,7 @@ class Doc;
 
 #define KXMLQLCCueStack              QStringLiteral("CueStack")
 #define KXMLQLCCueStackID            QStringLiteral("ID")
+#define KXMLQLCCueStackTracking      QStringLiteral("Tracking")
 #define KXMLQLCCueStackSpeed         QStringLiteral("Speed")
 #define KXMLQLCCueStackSpeedFadeIn   QStringLiteral("FadeIn")
 #define KXMLQLCCueStackSpeedFadeOut  QStringLiteral("FadeOut")
@@ -172,6 +173,9 @@ public:
     /** Replace the cue at the given $index with $cue */
     void replaceCue(int index, const Cue& cue);
 
+    /** Merge programmer values into an existing cue. */
+    bool updateCue(int index, const QMap<uint, uchar>& values);
+
     /** Remove the cue at the given $index */
     void removeCue(int index);
 
@@ -181,6 +185,19 @@ public:
     /** Get a list of all cues */
     QList <Cue> cues() const;
 
+    /** Get a copy of a cue, or an empty cue if $index is invalid. */
+    Cue cue(int index) const;
+
+    /************************************************************************
+     * Tracking
+     ************************************************************************/
+public:
+    void setTracking(bool enabled);
+    bool isTracking() const;
+
+    /** Resolve the state produced at $index after applying tracked values. */
+    QMap<uint, uchar> trackedValues(int index) const;
+
 signals:
     void added(int index);
     void removed(int index);
@@ -188,7 +205,8 @@ signals:
 
 private:
     QList <Cue> m_cues;
-    QMutex m_mutex;
+    mutable QMutex m_mutex;
+    bool m_tracking;
 
     /************************************************************************
      * Load & Save

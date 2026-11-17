@@ -38,6 +38,8 @@ private slots:
     void appendCue();
     void insertCue();
     void replaceCue();
+    void updateCue();
+    void tracking();
     void currentIndex();
     void removeCue();
     void removeCues();

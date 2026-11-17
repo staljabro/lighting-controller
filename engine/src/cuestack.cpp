@@ -41,6 +41,7 @@ CueStack::CueStack(Doc* doc)
     , m_fadeInSpeed(0)
     , m_fadeOutSpeed(0)
     , m_duration(UINT_MAX)
+    , m_tracking(true)
     , m_running(false)
     , m_intensity(1.0)
     , m_currentIndex(-1)
@@ -212,6 +213,25 @@ void CueStack::replaceCue(int index, const Cue& cue)
     }
 }
 
+bool CueStack::updateCue(int index, const QMap<uint, uchar>& values)
+{
+    {
+        QMutexLocker locker(&m_mutex);
+        if (index < 0 || index >= m_cues.size())
+            return false;
+
+        QMapIterator<uint, uchar> it(values);
+        while (it.hasNext())
+        {
+            it.next();
+            m_cues[index].setValue(it.key(), it.value());
+        }
+    }
+
+    emit changed(index);
+    return true;
+}
+
 void CueStack::removeCue(int index)
 {
     qDebug() << Q_FUNC_INFO;
@@ -264,6 +284,55 @@ void CueStack::removeCues(const QList <int>& indexes)
 QList <Cue> CueStack::cues() const
 {
     return m_cues;
+}
+
+Cue CueStack::cue(int index) const
+{
+    QMutexLocker locker(&m_mutex);
+    if (index < 0 || index >= m_cues.size())
+        return Cue();
+
+    return m_cues.at(index);
+}
+
+/****************************************************************************
+ * Tracking
+ ****************************************************************************/
+
+void CueStack::setTracking(bool enabled)
+{
+    if (m_tracking == enabled)
+        return;
+
+    m_tracking = enabled;
+    emit changed(-1);
+}
+
+bool CueStack::isTracking() const
+{
+    return m_tracking;
+}
+
+QMap<uint, uchar> CueStack::trackedValues(int index) const
+{
+    QMap<uint, uchar> result;
+    QMutexLocker locker(&m_mutex);
+
+    if (index < 0 || index >= m_cues.size())
+        return result;
+
+    const int first = m_tracking ? 0 : index;
+    for (int cueIndex = first; cueIndex <= index; ++cueIndex)
+    {
+        QMapIterator<uint, uchar> it(m_cues.at(cueIndex).values());
+        while (it.hasNext())
+        {
+            it.next();
+            result[it.key()] = it.value();
+        }
+    }
+
+    return result;
 }
 
 void CueStack::setCurrentIndex(int index)
@@ -329,6 +398,12 @@ bool CueStack::loadXML(QXmlStreamReader &root)
         return false;
     }
 
+    const QXmlStreamAttributes attributes = root.attributes();
+    if (attributes.hasAttribute(KXMLQLCCueStackTracking))
+        setTracking(attributes.value(KXMLQLCCueStackTracking).toInt() != 0);
+    else
+        setTracking(false); // Legacy QLC+ stacks contain complete snapshots.
+
     while (root.readNextStartElement())
     {
         if (root.name() == KXMLQLCCue)
@@ -361,6 +436,7 @@ bool CueStack::saveXML(QXmlStreamWriter *doc, uint id) const
 
     doc->writeStartElement(KXMLQLCCueStack);
     doc->writeAttribute(KXMLQLCCueStackID, QString::number(id));
+    doc->writeAttribute(KXMLQLCCueStackTracking, isTracking() ? QStringLiteral("1") : QStringLiteral("0"));
 
     doc->writeStartElement(KXMLQLCCueStackSpeed);
     doc->writeAttribute(KXMLQLCCueStackSpeedFadeIn, QString::number(fadeInSpeed()));
@@ -649,8 +725,11 @@ void CueStack::switchCue(int from, int to, const QList<Universe *> ua)
             oldCue = m_cues[from];
     }
 
+    const QMap<uint, uchar> newValues = trackedValues(to);
+    const QMap<uint, uchar> oldValues = trackedValues(from);
+
     // Fade out the HTP channels of the previous cue
-    QMapIterator <uint,uchar> oldit(oldCue.values());
+    QMapIterator <uint,uchar> oldit(oldValues);
     while (oldit.hasNext() == true)
     {
         oldit.next();
@@ -673,7 +752,7 @@ void CueStack::switchCue(int from, int to, const QList<Universe *> ua)
     }
 
     // Fade in all channels of the new cue
-    QMapIterator <uint,uchar> newit(newCue.values());
+    QMapIterator <uint,uchar> newit(newValues);
     while (newit.hasNext() == true)
     {
         newit.next();

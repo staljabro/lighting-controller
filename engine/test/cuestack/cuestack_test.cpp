@@ -69,6 +69,7 @@ void CueStack_Test::initial()
     QCOMPARE(cs.fadeOutSpeed(), uint(0));
     QCOMPARE(cs.duration(), uint(UINT_MAX));
     QCOMPARE(cs.cues().size(), 0);
+    QCOMPARE(cs.isTracking(), true);
     QCOMPARE(cs.currentIndex(), -1);
     QCOMPARE(cs.intensity(), qreal(1.0));
     QCOMPARE(cs.isRunning(), false);
@@ -242,6 +243,67 @@ void CueStack_Test::replaceCue()
     QCOMPARE(cs.cues()[4].name(), QString("Five"));
     QCOMPARE(cs.cues()[5].name(), QString("Nine"));
     QCOMPARE(cs.cues()[6].name(), QString("Eight"));
+}
+
+void CueStack_Test::updateCue()
+{
+    CueStack cs(m_doc);
+    Cue cue("Look");
+    cue.setValue(1, 10);
+    cs.appendCue(cue);
+
+    QSignalSpy spy(&cs, SIGNAL(changed(int)));
+    QMap<uint, uchar> update;
+    update[1] = 20;
+    update[2] = 30;
+
+    QCOMPARE(cs.updateCue(0, update), true);
+    QCOMPARE(cs.cue(0).value(1), uchar(20));
+    QCOMPARE(cs.cue(0).value(2), uchar(30));
+    QCOMPARE(spy.size(), 1);
+    QCOMPARE(spy.at(0).at(0).toInt(), 0);
+    QCOMPARE(cs.updateCue(-1, update), false);
+    QCOMPARE(cs.updateCue(1, update), false);
+}
+
+void CueStack_Test::tracking()
+{
+    CueStack cs(m_doc);
+
+    Cue first("First");
+    first.setValue(1, 10);
+    first.setValue(2, 20);
+    cs.appendCue(first);
+
+    Cue second("Second");
+    second.setValue(2, 25);
+    second.setValue(3, 30);
+    cs.appendCue(second);
+
+    Cue third("Third");
+    third.setValue(1, 0);
+    cs.appendCue(third);
+
+    QMap<uint, uchar> values = cs.trackedValues(1);
+    QCOMPARE(values.size(), 3);
+    QCOMPARE(values.value(1), uchar(10));
+    QCOMPARE(values.value(2), uchar(25));
+    QCOMPARE(values.value(3), uchar(30));
+
+    values = cs.trackedValues(2);
+    QCOMPARE(values.value(1), uchar(0));
+    QCOMPARE(values.value(2), uchar(25));
+    QCOMPARE(values.value(3), uchar(30));
+
+    cs.setTracking(false);
+    values = cs.trackedValues(1);
+    QCOMPARE(values.size(), 2);
+    QCOMPARE(values.contains(1), false);
+    QCOMPARE(values.value(2), uchar(25));
+    QCOMPARE(values.value(3), uchar(30));
+
+    QCOMPARE(cs.trackedValues(-1).isEmpty(), true);
+    QCOMPARE(cs.trackedValues(3).isEmpty(), true);
 }
 
 void CueStack_Test::currentIndex()
@@ -430,6 +492,7 @@ void CueStack_Test::loadEmpty()
     CueStack cs(m_doc);
     QCOMPARE(cs.loadXML(xmlReader), true);
     QCOMPARE(cs.cues().size(), 0);
+    QCOMPARE(cs.isTracking(), false);
 }
 
 void CueStack_Test::loadID()
@@ -464,6 +527,7 @@ void CueStack_Test::loadComplete()
 
     xmlWriter.writeStartElement("CueStack");
     xmlWriter.writeAttribute("ID", "15");
+    xmlWriter.writeAttribute("Tracking", "1");
 
     xmlWriter.writeStartElement("Speed");
     xmlWriter.writeAttribute("FadeIn", "100");
@@ -498,6 +562,7 @@ void CueStack_Test::loadComplete()
     CueStack cs(m_doc);
     QCOMPARE(CueStack::loadXMLID(xmlReader), uint(15));
     QCOMPARE(cs.loadXML(xmlReader), true);
+    QCOMPARE(cs.isTracking(), true);
 
     QCOMPARE(cs.cues().size(), 3);
     QCOMPARE(cs.cues().at(0).name(), QString("First"));
@@ -532,6 +597,7 @@ void CueStack_Test::save()
     QCOMPARE(xmlReader.name().toString(), QString("Foo"));
     xmlReader.readNextStartElement();
     QCOMPARE(xmlReader.name().toString(), QString("CueStack"));
+    QCOMPARE(xmlReader.attributes().value("Tracking").toString(), QString("1"));
 
     int cue = 0, speed = 0;
 

@@ -132,6 +132,11 @@ void Cue::unsetValue(uint channel)
     m_values.remove(channel);
 }
 
+bool Cue::containsValue(uint channel) const
+{
+    return m_values.contains(channel);
+}
+
 uchar Cue::value(uint channel) const
 {
     return m_values.value(channel, 0);

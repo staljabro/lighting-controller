@@ -89,6 +89,8 @@ void Cue_Test::value()
 
     cue.setValue(0, 15);
     QCOMPARE(cue.values().size(), 1);
+    QCOMPARE(cue.containsValue(0), true);
+    QCOMPARE(cue.containsValue(1), false);
     QCOMPARE(cue.value(0), uchar(15));
 
     cue.setValue(0, 15);
@@ -102,6 +104,7 @@ void Cue_Test::value()
 
     cue.unsetValue(0);
     QCOMPARE(cue.values().size(), 1);
+    QCOMPARE(cue.containsValue(0), false);
     QCOMPARE(cue.value(UINT_MAX), uchar(42));
 
     cue.unsetValue(0);

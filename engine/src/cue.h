@@ -89,6 +89,7 @@ private:
 public:
     void setValue(uint channel, uchar value);
     void unsetValue(uint channel);
+    bool containsValue(uint channel) const;
     uchar value(uint channel) const;
 
     QMap <uint,uchar> values() const;
