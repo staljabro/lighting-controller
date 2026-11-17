@@ -1,0 +1,87 @@
+<Window x:Class="LightingController.App.FixtureEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Fixture Editor" Height="780" Width="1180" MinHeight="650" MinWidth="950"
+        Background="#15181B" Foreground="White" WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <Style TargetType="Button"><Setter Property="Margin" Value="4"/><Setter Property="Padding" Value="12,7"/><Setter Property="Background" Value="#30363B"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderBrush" Value="#4B555C"/></Style>
+        <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBoxStyle}"><Setter Property="Margin" Value="4"/><Setter Property="Padding" Value="7"/></Style>
+        <Style TargetType="ComboBox" BasedOn="{StaticResource DarkComboBoxStyle}"/>
+        <Style TargetType="DataGrid" BasedOn="{StaticResource DarkDataGridStyle}"><Setter Property="Margin" Value="4"/></Style>
+    </Window.Resources>
+    <Grid Margin="12">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0"><TextBlock Text="Manufacturer"/><TextBox x:Name="ManufacturerText" Text="Custom"/></StackPanel>
+            <StackPanel Grid.Column="1"><TextBlock Text="Model"/><TextBox x:Name="ModelText" Text="New Fixture"/></StackPanel>
+            <StackPanel Grid.Column="2"><TextBlock Text="Fixture type"/><ComboBox x:Name="TypeCombo" Margin="4" Padding="7"/></StackPanel>
+        </Grid>
+        <TabControl Grid.Row="1" Margin="0,12,0,8" Background="#1E2226" Foreground="White">
+            <TabItem Header="CHANNELS">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions><RowDefinition Height="2*"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <DataGrid x:Name="ChannelGrid" ItemsSource="{Binding Channels}" AutoGenerateColumns="False" CanUserAddRows="False" SelectionChanged="ChannelGrid_SelectionChanged">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="#" Binding="{Binding Number}" IsReadOnly="True" Width="42"/>
+                            <DataGridTextColumn Header="Channel name" Binding="{Binding Name}" Width="*"/>
+                            <DataGridCheckBoxColumn Header="Virtual" Binding="{Binding IsVirtual}" Width="65"/>
+                            <DataGridComboBoxColumn x:Name="GroupColumn" Header="Attribute group" SelectedItemBinding="{Binding Group}" Width="130"/>
+                            <DataGridComboBoxColumn x:Name="PresetColumn" Header="Attribute preset" SelectedItemBinding="{Binding Preset}" Width="190"/>
+                            <DataGridTextColumn Header="Byte" Binding="{Binding GroupByte}" Width="55"/>
+                            <DataGridTextColumn Header="Default" Binding="{Binding DefaultValue}" Width="70"/>
+                            <DataGridTextColumn Header="Targets (comma separated)" Binding="{Binding Targets}" Width="220"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal">
+                        <Button Content="ADD CHANNEL" Click="AddChannel_Click"/><Button Content="ADD VIRTUAL DIMMER" Click="AddVirtualDimmer_Click"/><Button Content="REMOVE CHANNEL" Click="RemoveChannel_Click"/>
+                        <Button Content="MOVE UP" Click="MoveChannelUp_Click"/><Button Content="MOVE DOWN" Click="MoveChannelDown_Click"/>
+                    </StackPanel>
+                    <DataGrid x:Name="CapabilityGrid" Grid.Row="2" ItemsSource="{Binding SelectedCapabilities}" AutoGenerateColumns="False" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="DMX minimum" Binding="{Binding Minimum}" Width="110"/>
+                            <DataGridTextColumn Header="DMX maximum" Binding="{Binding Maximum}" Width="110"/>
+                            <DataGridTextColumn Header="Capability name" Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="Capability preset" Binding="{Binding Preset}" Width="180"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel Grid.Row="3" Orientation="Horizontal">
+                        <Button Content="ADD CAPABILITY" Click="AddCapability_Click"/><Button Content="REMOVE CAPABILITY" Click="RemoveCapability_Click"/>
+                        <TextBlock Text="Capabilities describe how ranges such as closed, open, strobe, gobos and colour slots behave." VerticalAlignment="Center" Margin="14,0" Foreground="#B8C1C7"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+            <TabItem Header="MODES">
+                <Grid Margin="12">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Mode name" VerticalAlignment="Center"/><TextBox x:Name="ModeNameText" Width="260" Text="Default"/>
+                        <Button Content="CREATE MODE FROM CHANNEL ORDER" Click="CreateMode_Click"/>
+                    </StackPanel>
+                    <DataGrid x:Name="ModeGrid" Grid.Row="1" ItemsSource="{Binding Modes}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Mode" Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="DMX footprint" Binding="{Binding ChannelCount}" Width="140"/>
+                            <DataGridTextColumn Header="Mapping" Binding="{Binding MappingSummary}" Width="2*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <Button Grid.Row="2" HorizontalAlignment="Left" Content="REMOVE MODE" Click="RemoveMode_Click"/>
+                </Grid>
+            </TabItem>
+            <TabItem Header="CELLS / PARTS">
+                <Grid Margin="12"><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <DataGrid x:Name="PartGrid" ItemsSource="{Binding Parts}" AutoGenerateColumns="False" CanUserAddRows="False">
+                        <DataGrid.Columns><DataGridTextColumn Header="Part / cell name" Binding="{Binding Name}" Width="220"/><DataGridTextColumn Header="Physical channels (comma separated)" Binding="{Binding Channels}" Width="*"/></DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal"><Button Content="ADD RGB CELL" Click="AddRgbCell_Click"/><Button Content="ADD PART" Click="AddPart_Click"/><Button Content="REMOVE PART" Click="RemovePart_Click"/></StackPanel>
+                </Grid>
+            </TabItem>
+        </TabControl>
+        <DockPanel Grid.Row="2">
+            <TextBlock x:Name="EditorStatus" Foreground="#FFB34D" VerticalAlignment="Center" Text="Create channels, capabilities and at least one mode."/>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Content="CLOSE" IsCancel="True"/><Button Content="SAVE TO FIXTURE LIBRARY" Click="SaveFixture_Click" Background="#176B87" Foreground="White"/>
+            </StackPanel>
+        </DockPanel>
+    </Grid>
+</Window>

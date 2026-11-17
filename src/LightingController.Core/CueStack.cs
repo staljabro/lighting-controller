@@ -37,6 +37,11 @@ public sealed class CueStack
     }
 
     public IReadOnlyDictionary<ParameterAddress, CueValue> Resolve(int index)
+        => Resolve(index, null);
+
+    public IReadOnlyDictionary<ParameterAddress, CueValue> Resolve(
+        int index,
+        Func<CuePresetReference, IReadOnlyDictionary<ParameterAddress, CueValue>>? presetResolver)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         if (index >= _cues.Count)
@@ -48,6 +53,9 @@ public sealed class CueStack
         var first = Tracking ? 0 : index;
         for (var cueIndex = first; cueIndex <= index; cueIndex++)
         {
+            if (presetResolver is not null)
+                foreach (var reference in _cues[cueIndex].PresetReferences)
+                    foreach (var (address, value) in presetResolver(reference)) result[address] = value;
             foreach (var (address, value) in _cues[cueIndex].Values)
             {
                 result[address] = value;

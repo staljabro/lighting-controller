@@ -4,6 +4,63 @@
              xmlns:local="clr-namespace:LightingController.App"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <SolidColorBrush x:Key="ControlBackground" Color="#20252A"/>
+        <SolidColorBrush x:Key="ControlForeground" Color="#F2F2F2"/>
+        <SolidColorBrush x:Key="ControlBorder" Color="#4B555C"/>
+        <SolidColorBrush x:Key="SelectionBackground" Color="#176B87"/>
+        <Style x:Key="DarkTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="{StaticResource ControlBackground}"/><Setter Property="Foreground" Value="{StaticResource ControlForeground}"/>
+            <Setter Property="CaretBrush" Value="White"/><Setter Property="BorderBrush" Value="{StaticResource ControlBorder}"/><Setter Property="SelectionBrush" Value="{StaticResource SelectionBackground}"/>
+        </Style>
+        <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBoxStyle}"/>
+        <Style x:Key="DarkComboBoxItemStyle" TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="{StaticResource ControlBackground}"/><Setter Property="Foreground" Value="{StaticResource ControlForeground}"/>
+            <Setter Property="Padding" Value="7,5"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem"><Border x:Name="ItemBorder" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}"><ContentPresenter/></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="ItemBorder" Property="Background" Value="#176B87"/></Trigger><Trigger Property="IsSelected" Value="True"><Setter TargetName="ItemBorder" Property="Background" Value="#176B87"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+            <Style.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter Property="Background" Value="{StaticResource SelectionBackground}"/></Trigger></Style.Triggers>
+        </Style>
+        <Style x:Key="DarkComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Background" Value="{StaticResource ControlBackground}"/><Setter Property="Foreground" Value="{StaticResource ControlForeground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorder}"/><Setter Property="ItemContainerStyle" Value="{StaticResource DarkComboBoxItemStyle}"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox">
+                <Grid><ToggleButton x:Name="DropDownToggle" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" Foreground="{TemplateBinding Foreground}" Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"><ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"><ContentPresenter/></Border></ControlTemplate></ToggleButton.Template><Grid><ContentPresenter Margin="8,4,28,4" VerticalAlignment="Center" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/><TextBlock Text="▼" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#B8C1C7"/></Grid></ToggleButton><Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False"><Border Background="#20252A" BorderBrush="#4B555C" BorderThickness="1" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="320"><ScrollViewer><ItemsPresenter/></ScrollViewer></Border></Popup></Grid>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
+        <Style TargetType="ComboBox" BasedOn="{StaticResource DarkComboBoxStyle}"/>
+        <Style x:Key="DarkDataGridColumnHeaderStyle" TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#30363B"/><Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#4B555C"/><Setter Property="BorderThickness" Value="0,0,1,1"/><Setter Property="Padding" Value="7"/>
+            <Setter Property="Template">
+                <Setter.Value><ControlTemplate TargetType="DataGridColumnHeader"><Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}"><ContentPresenter VerticalAlignment="Center"/></Border></ControlTemplate></Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="DarkDataGridCellStyle" TargetType="DataGridCell">
+            <Setter Property="Background" Value="#20252A"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderBrush" Value="#343B40"/><Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="Template">
+                <Setter.Value><ControlTemplate TargetType="DataGridCell"><Border x:Name="CellBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="5,2"><ContentPresenter VerticalAlignment="Center"/></Border><ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter TargetName="CellBorder" Property="Background" Value="#176B87"/><Setter Property="Foreground" Value="White"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="DarkDataGridRowStyle" TargetType="DataGridRow">
+            <Setter Property="Background" Value="#20252A"/><Setter Property="Foreground" Value="White"/>
+            <Style.Triggers><Trigger Property="AlternationIndex" Value="1"><Setter Property="Background" Value="#252B30"/></Trigger><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#176B87"/></Trigger></Style.Triggers>
+        </Style>
+        <Style x:Key="DarkDataGridStyle" TargetType="DataGrid">
+            <Setter Property="Background" Value="#1E2226"/><Setter Property="Foreground" Value="{StaticResource ControlForeground}"/>
+            <Setter Property="RowBackground" Value="#20252A"/><Setter Property="AlternatingRowBackground" Value="#252B30"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorder}"/><Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#343B40"/><Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="ColumnHeaderStyle" Value="{StaticResource DarkDataGridColumnHeaderStyle}"/>
+            <Setter Property="CellStyle" Value="{StaticResource DarkDataGridCellStyle}"/>
+            <Setter Property="RowStyle" Value="{StaticResource DarkDataGridRowStyle}"/>
+        </Style>
+        <Style TargetType="DataGrid" BasedOn="{StaticResource DarkDataGridStyle}"/>
+        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource DarkDataGridColumnHeaderStyle}"/>
+        <Style TargetType="DataGridCell" BasedOn="{StaticResource DarkDataGridCellStyle}"/>
+        <Style TargetType="DataGridRow" BasedOn="{StaticResource DarkDataGridRowStyle}"/>
+        <Style TargetType="TabControl"><Setter Property="Background" Value="#1E2226"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderBrush" Value="#4B555C"/></Style>
+        <Style TargetType="TabItem">
+            <Setter Property="Background" Value="#30363B"/><Setter Property="Foreground" Value="White"/><Setter Property="Padding" Value="12,7"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TabItem"><Border x:Name="TabBorder" Background="{TemplateBinding Background}" BorderBrush="#4B555C" BorderThickness="1,1,1,0" Padding="{TemplateBinding Padding}" Margin="0,0,2,0"><ContentPresenter ContentSource="Header" HorizontalAlignment="Center"/></Border><ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter TargetName="TabBorder" Property="Background" Value="#176B87"/><Setter Property="Foreground" Value="White"/></Trigger><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TabBorder" Property="Background" Value="#3C474E"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+        </Style>
     </Application.Resources>
 </Application>

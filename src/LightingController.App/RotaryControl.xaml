@@ -1,0 +1,9 @@
+<UserControl x:Class="LightingController.App.RotaryControl" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Width="110" Height="126" IsManipulationEnabled="True" MouseLeftButtonDown="Control_MouseLeftButtonDown" MouseMove="Control_MouseMove" MouseLeftButtonUp="Control_MouseLeftButtonUp" MouseWheel="Control_MouseWheel" ManipulationDelta="Control_ManipulationDelta">
+    <Border Background="#202428" BorderBrush="#555E64" BorderThickness="1" CornerRadius="6" Margin="3" Padding="5">
+        <Grid><Grid.RowDefinitions><RowDefinition Height="24"/><RowDefinition Height="*"/><RowDefinition Height="25"/></Grid.RowDefinitions>
+            <TextBlock x:Name="LabelText" Text="ENCODER" HorizontalAlignment="Center" Foreground="#DDE2E5" FontWeight="SemiBold"/>
+            <Grid Grid.Row="1" Width="68" Height="68"><Ellipse Fill="#30363B" Stroke="#89939A" StrokeThickness="3"/><Line x:Name="Indicator" X1="34" Y1="34" X2="34" Y2="7" Stroke="#00D7D7" StrokeThickness="4" StrokeStartLineCap="Round" StrokeEndLineCap="Round"><Line.RenderTransform><RotateTransform x:Name="IndicatorRotation" CenterX="34" CenterY="34" Angle="-135"/></Line.RenderTransform></Line></Grid>
+            <TextBlock x:Name="ValueText" Grid.Row="2" Text="0" HorizontalAlignment="Center" Foreground="#FFCB36" FontSize="16" FontWeight="Bold"/>
+        </Grid>
+    </Border>
+</UserControl>

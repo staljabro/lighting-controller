@@ -20,6 +20,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\LightingController.Fixtures\LightingController.Fixtures.csproj" />
+    <ProjectReference Include="..\..\src\LightingController.Output\LightingController.Output.csproj" />
+    <ProjectReference Include="..\..\src\LightingController.Persistence\LightingController.Persistence.csproj" />
   </ItemGroup>
 
 </Project>

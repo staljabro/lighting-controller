@@ -1,91 +1,29 @@
-<Window x:Class="LightingController.App.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Lighting Controller" Height="820" Width="1440" MinHeight="640" MinWidth="1024"
-        Background="#15181B" Foreground="#F2F2F2" WindowStartupLocation="CenterScreen">
-    <Window.Resources>
-        <Style TargetType="Button">
-            <Setter Property="Background" Value="#30363B"/><Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#4B555C"/><Setter Property="Padding" Value="14,9"/>
-            <Setter Property="Margin" Value="4"/><Setter Property="FontSize" Value="14"/>
-        </Style>
-        <Style TargetType="DataGrid">
-            <Setter Property="Background" Value="#1E2226"/><Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#3C444A"/><Setter Property="RowBackground" Value="#20252A"/>
-            <Setter Property="AlternatingRowBackground" Value="#252B30"/><Setter Property="GridLinesVisibility" Value="Horizontal"/>
-            <Setter Property="HorizontalGridLinesBrush" Value="#343B40"/>
-        </Style>
-    </Window.Resources>
-    <Grid>
-        <Grid.RowDefinitions><RowDefinition Height="58"/><RowDefinition Height="*"/><RowDefinition Height="78"/></Grid.RowDefinitions>
-        <Border Grid.Row="0" Background="#22272B" BorderBrush="#3C444A" BorderThickness="0,0,0,1">
-            <DockPanel Margin="10,4">
-                <TextBlock Text="LIGHTING CONTROLLER" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,28,0"/>
-                <StackPanel Orientation="Horizontal">
-                    <Button Content="PATCH"/><Button Content="FIXTURES"/>
-                    <Button Content="PROGRAMMER" Background="#176B87" BorderBrush="#28A9D2"/>
-                    <Button Content="CUE LISTS"/><Button Content="PLAYBACK"/>
-                </StackPanel>
-                <TextBlock DockPanel.Dock="Right" Text="OUTPUT OFF" Foreground="#FFB34D" FontWeight="Bold" VerticalAlignment="Center" Margin="20,0"/>
-            </DockPanel>
-        </Border>
-        <Grid Grid.Row="1" Margin="10">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="310"/><ColumnDefinition Width="*"/><ColumnDefinition Width="330"/></Grid.ColumnDefinitions>
-            <Border Grid.Column="0" Background="#1E2226" BorderBrush="#3C444A" BorderThickness="1" Padding="10">
-                <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="FIXTURE SELECTION" FontWeight="Bold" Margin="6,4,6,12"/>
-                    <UniformGrid Columns="2" Rows="6">
-                        <Button Content="LED BARS"/><Button Content="BEAMS" Background="#176B87"/><Button Content="WASHES"/><Button Content="ALL"/>
-                        <Button Content="BEAM 1" Background="#176B87"/><Button Content="BEAM 2"/><Button Content="BEAM 3"/><Button Content="BEAM 4"/>
-                    </UniformGrid>
-                </DockPanel>
-            </Border>
-            <Grid Grid.Column="1" Margin="10,0">
-                <Grid.RowDefinitions><RowDefinition Height="250"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                <Border Background="#1E2226" BorderBrush="#3C444A" BorderThickness="1" Padding="10">
-                    <StackPanel>
-                        <TextBlock Text="PROGRAMMER — BEAM 1" FontWeight="Bold" Margin="6,4,6,10"/>
-                        <UniformGrid Columns="5" Rows="3">
-                            <Button Content="DIMMER 0%"/><Button Content="DIMMER 25%"/><Button Content="DIMMER 50%"/><Button Content="DIMMER 75%"/><Button Content="DIMMER FULL"/>
-                            <Button Content="WHITE" Background="#D8D8D8" Foreground="#151515"/><Button Content="RED" Background="#932C32"/>
-                            <Button Content="GREEN" Background="#297448"/><Button Content="BLUE" Background="#28599B"/><Button Content="MAGENTA" Background="#823C87"/>
-                            <Button Content="HOME"/><Button Content="CENTRE"/><Button Content="HIGH"/><Button Content="LOW"/><Button Content="CROSS"/>
-                        </UniformGrid>
-                    </StackPanel>
-                </Border>
-                <Border Grid.Row="1" Background="#1E2226" BorderBrush="#3C444A" BorderThickness="1" Margin="0,10,0,0" Padding="10">
-                    <DockPanel>
-                        <TextBlock DockPanel.Dock="Top" Text="CUE STACK — MAIN" FontWeight="Bold" Margin="6,4,6,10"/>
-                        <DataGrid ItemsSource="{Binding Cues}" AutoGenerateColumns="False" CanUserAddRows="False">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Cue" Binding="{Binding Number}" Width="70"/>
-                                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-                                <DataGridTextColumn Header="Fade" Binding="{Binding Fade}" Width="90"/>
-                                <DataGridTextColumn Header="Delay" Binding="{Binding Delay}" Width="90"/>
-                                <DataGridTextColumn Header="Follow" Binding="{Binding Follow}" Width="90"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </DockPanel>
-                </Border>
-            </Grid>
-            <Border Grid.Column="2" Background="#1E2226" BorderBrush="#3C444A" BorderThickness="1" Padding="10">
-                <Grid>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                    <TextBlock Text="PAN / TILT" FontWeight="Bold" Margin="6,4,6,10"/>
-                    <Border Grid.Row="1" Margin="8" Background="#121518" BorderBrush="#4B555C" BorderThickness="1">
-                        <Grid><Ellipse Width="24" Height="24" Fill="#28A9D2" Stroke="White" StrokeThickness="2"/></Grid>
-                    </Border>
-                    <UniformGrid Grid.Row="2" Columns="2"><Button Content="CLEAR"/><Button Content="STORE" Background="#176B87"/></UniformGrid>
-                </Grid>
-            </Border>
-        </Grid>
-        <Border Grid.Row="2" Background="#22272B" BorderBrush="#3C444A" BorderThickness="0,1,0,0">
-            <UniformGrid Columns="8" Margin="8">
-                <Button Content="BACK"/><Button Content="PAUSE"/><Button Content="GO" Background="#23864C" BorderBrush="#39B86A"/>
-                <Button Content="RELEASE"/><Button Content="RECORD" Background="#8B312F"/><Button Content="UPDATE" Background="#7A621E"/>
-                <Button Content="EDIT"/><Button Content="DELETE"/>
-            </UniformGrid>
-        </Border>
+<Window x:Class="LightingController.App.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:LightingController.App" Title="Lighting Controller" Height="900" Width="1480" MinHeight="740" MinWidth="1100" Background="#15181B" Foreground="#F2F2F2" WindowStartupLocation="CenterScreen" PreviewTextInput="Window_PreviewTextInput" PreviewKeyDown="Window_PreviewKeyDown">
+ <Window.Resources><Style TargetType="Button"><Setter Property="Background" Value="#292D30"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderBrush" Value="#4B555C"/><Setter Property="Padding" Value="10,7"/><Setter Property="Margin" Value="3"/><Setter Property="FontSize" Value="14"/></Style><Style TargetType="DataGrid" BasedOn="{StaticResource DarkDataGridStyle}"/></Window.Resources>
+ <Grid><Grid.RowDefinitions><RowDefinition Height="68"/><RowDefinition Height="*"/><RowDefinition Height="48"/><RowDefinition Height="138"/></Grid.RowDefinitions>
+  <Border Background="#22272B" BorderBrush="#3C444A" BorderThickness="0,0,0,1"><DockPanel Margin="10,4"><TextBlock Text="LIGHTING CONTROLLER" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,24,0"/><StackPanel Orientation="Horizontal"><Button Content="PATCH" Tag="Patch" Click="Navigation_Click" Background="#176B87"/><Button Content="PROGRAMMER" Tag="Programmer" Click="Navigation_Click"/><Button Content="CUE LISTS" Tag="Cues" Click="Navigation_Click"/></StackPanel><TextBlock x:Name="StatusText" DockPanel.Dock="Right" Text="READY" Foreground="#FFB34D" FontWeight="Bold" VerticalAlignment="Center" Margin="20,0"/></DockPanel></Border>
+  <Grid Grid.Row="1" Margin="10">
+   <Grid x:Name="PatchWorkspace"><Grid.ColumnDefinitions><ColumnDefinition Width="430"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+    <Border Background="#1E2226" BorderBrush="#3C444A" BorderThickness="1" Padding="10"><DockPanel><TextBlock DockPanel.Dock="Top" Text="FIXTURE LIBRARY — DRAG INTO PATCH" FontWeight="Bold" Margin="6,4,6,8"/><TextBox x:Name="LibrarySearchText" DockPanel.Dock="Top" Margin="4" Padding="7" TextChanged="LibrarySearchText_TextChanged"/><StackPanel DockPanel.Dock="Bottom"><StackPanel Orientation="Horizontal"><Button Content="ADD PROFILE" Click="ImportFixture_Click"/><Button Content="NEW FIXTURE" Click="OpenFixtureEditor_Click"/><Button Content="EDIT PROFILE" Click="EditFixtureProfile_Click"/></StackPanel><StackPanel Orientation="Horizontal"><Button Content="SAVE SHOW" Click="SaveShow_Click"/><Button Content="LOAD SHOW" Click="LoadShow_Click"/></StackPanel></StackPanel><ListBox x:Name="FixtureLibraryList" ItemsSource="{Binding VisibleLibrary}" PreviewMouseMove="FixtureLibraryList_PreviewMouseMove" Background="#20252A" Foreground="White" BorderBrush="#4B555C"><ListBox.ItemTemplate><DataTemplate><StackPanel Margin="8,6"><TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/><TextBlock Text="{Binding Details}" Foreground="#B8C1C7" FontSize="11"/></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox></DockPanel></Border>
+    <Border Grid.Column="1" Margin="10,0,0,0" Background="#1E2226" BorderBrush="#3C444A" BorderThickness="1" Padding="10"><DockPanel><TextBlock DockPanel.Dock="Top" Text="FIXTURE PATCH" FontWeight="Bold" Margin="6,4,6,8"/><StackPanel DockPanel.Dock="Bottom"><Button HorizontalAlignment="Left" Content="REMOVE PATCHED FIXTURE" Click="RemoveFixture_Click"/><Border Margin="4,8" Padding="8" Background="#181C1F" BorderBrush="#3C444A" BorderThickness="1"><StackPanel Orientation="Horizontal"><TextBlock Text="NETWORK OUTPUT" FontWeight="Bold" VerticalAlignment="Center" Margin="4"/><ComboBox x:Name="OutputProtocolCombo" Width="110" Margin="4" Padding="7" SelectionChanged="OutputProtocolCombo_SelectionChanged"/><TextBox x:Name="OutputDestinationText" Width="150" Margin="4" Padding="7" Text="127.0.0.1"/><TextBlock Text="Universe" VerticalAlignment="Center" Margin="8,4"/><TextBox x:Name="OutputUniverseText" Width="55" Margin="4" Padding="7" Text="1"/><CheckBox x:Name="OutputEnabledCheck" Content="Live" Foreground="White" VerticalAlignment="Center" Margin="10,4"/><Button Content="TEST" Click="SendOutputTest_Click"/></StackPanel></Border></StackPanel><DataGrid x:Name="FixtureGrid" ItemsSource="{Binding Fixtures}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" SelectionChanged="FixtureGrid_SelectionChanged" AllowDrop="True" DragOver="FixtureGrid_DragOver" Drop="FixtureGrid_Drop"><DataGrid.Columns><DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="55"/><DataGridTextColumn Header="Fixture" Binding="{Binding Name}" Width="*"/><DataGridTextColumn Header="Universe" Binding="{Binding Universe}" Width="90"/><DataGridTextColumn Header="Address" Binding="{Binding Address}" Width="90"/></DataGrid.Columns></DataGrid></DockPanel></Border>
+   </Grid>
+   <Grid x:Name="ProgrammerWorkspace" Visibility="Collapsed"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/><ColumnDefinition Width="310"/></Grid.ColumnDefinitions>
+    <Border Background="#1E2226" BorderBrush="#3C444A" BorderThickness="1" Padding="9"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="180"/></Grid.RowDefinitions><TextBlock Text="FIXTURES" FontWeight="Bold" Margin="4,4,4,8"/><ListBox Grid.Row="1" x:Name="ProgrammerFixtureList" ItemsSource="{Binding Fixtures}" DisplayMemberPath="Name" SelectionChanged="ProgrammerFixtureList_SelectionChanged" Background="#20252A" Foreground="White" BorderBrush="#4B555C"/><TextBlock Grid.Row="2" Text="CELLS / PARTS" FontWeight="Bold" Margin="4,10,4,6"/><ListBox Grid.Row="3" x:Name="FixturePartList" SelectionMode="Extended" SelectionChanged="FixturePartList_SelectionChanged" Background="#20252A" Foreground="White" BorderBrush="#4B555C" DisplayMemberPath="DisplayName"/></Grid></Border>
+    <Grid Grid.Column="1" Margin="8,0"><Grid.RowDefinitions><RowDefinition Height="220"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+     <Border Background="#1E2226" BorderBrush="#3C444A" BorderThickness="1" Padding="7"><StackPanel><TextBlock x:Name="ProgrammerTitle" Text="PROGRAMMER — NO FIXTURES SELECTED" FontWeight="Bold" Margin="5"/><UniformGrid Columns="7"><Button Height="60" Content="1&#x0a;DIMMER" Tag="Dimmer" Click="FeatureGroup_Click" BorderBrush="#D8C300"/><Button Content="2&#x0a;POSITION" Tag="Position" Click="FeatureGroup_Click"/><Button Content="3&#x0a;GOBO" Tag="Gobo" Click="FeatureGroup_Click"/><Button Content="4&#x0a;COLOR" Tag="Color" Click="FeatureGroup_Click"/><Button Content="5&#x0a;BEAM" Tag="Beam" Click="FeatureGroup_Click"/><Button Content="6&#x0a;FOCUS" Tag="Focus" Click="FeatureGroup_Click"/><Button Content="7&#x0a;CONTROL" Tag="Control" Click="FeatureGroup_Click"/></UniformGrid>
+      <Grid x:Name="DimmerControls"><UniformGrid Columns="4" HorizontalAlignment="Left"><local:RotaryControl x:Name="DimmerSlider" Label="DIMMER" Value="0" ValueChanged="DimmerSlider_ValueChanged"/><local:RotaryControl x:Name="EffectRateEncoder" Label="RATE Hz" Minimum="0.1" Maximum="10" Step="0.1" Value="1"/><local:RotaryControl x:Name="EffectLowEncoder" Label="EFFECT LOW" Value="0"/><local:RotaryControl x:Name="EffectHighEncoder" Label="EFFECT HIGH" Value="255"/></UniformGrid></Grid>
+      <Grid x:Name="PositionControls" Visibility="Collapsed"><UniformGrid Columns="4" HorizontalAlignment="Left"><local:RotaryControl x:Name="PanSlider" Label="PAN" Value="127" ValueChanged="PositionSlider_ValueChanged"/><local:RotaryControl x:Name="TiltSlider" Label="TILT" Value="127" ValueChanged="PositionSlider_ValueChanged"/><local:RotaryControl x:Name="EffectPhaseEncoder" Label="PHASE" Maximum="360" Step="5" Value="0"/><Button Width="110" Height="120" Content="START / STOP&#x0a;EFFECT" Click="ToggleEffect_Click" Background="#5C286D"/></UniformGrid></Grid>
+      <Grid x:Name="ColorControls" Visibility="Collapsed"><UniformGrid Columns="4" HorizontalAlignment="Left"><local:RotaryControl x:Name="RedSlider" Label="RED" Value="255" ValueChanged="ColourSlider_ValueChanged"/><local:RotaryControl x:Name="GreenSlider" Label="GREEN" Value="255" ValueChanged="ColourSlider_ValueChanged"/><local:RotaryControl x:Name="BlueSlider" Label="BLUE" Value="255" ValueChanged="ColourSlider_ValueChanged"/><Button Width="110" Height="120" Content="STORE&#x0a;PRESET" Click="BeginStore_Click" Background="#176B87"/></UniformGrid></Grid>
+      <Grid x:Name="ControlControls" Visibility="Collapsed"><UniformGrid Columns="4" HorizontalAlignment="Left"><Button Width="120" Height="110" Content="ADD CURRENT&#x0a;CHASER STEP" Click="AddChaserStep_Click"/><Button x:Name="RunChaserButton" Width="120" Height="110" Content="RUN / STOP&#x0a;CHASER" Click="ToggleChaser_Click" Background="#5C286D"/><Button Width="120" Height="110" Content="CLEAR&#x0a;CHASER" Click="ClearChaser_Click"/><Button Width="120" Height="110" Content="STORE&#x0a;FIXTURE GROUP" Click="StoreFixtureGroup_Click" Background="#176B87"/></UniformGrid></Grid>
+      <TextBlock x:Name="UnsupportedFeatureText" Visibility="Collapsed" Text="Controls for this feature group will appear here as fixture attributes are implemented." Foreground="#B8C1C7" Margin="8,18" TextAlignment="Center"/>
+     </StackPanel></Border>
+     <Border Grid.Row="1" Margin="0,8,0,0" Background="#121518" BorderBrush="#3C444A" BorderThickness="1" Padding="7"><DockPanel><TextBlock x:Name="PresetPoolTitle" DockPanel.Dock="Top" Text="INTENSITY PRESET POOL" FontWeight="Bold" Margin="6"/><ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsControl x:Name="ColourPresetList" ItemsSource="{Binding VisiblePresets}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><Button Width="105" Height="92" Margin="3" Padding="0" Tag="{Binding}" Click="ColourPresetButton_Click" PreviewMouseRightButtonDown="PresetButton_RightDown" PreviewMouseRightButtonUp="PresetButton_RightUp"><Grid><Border BorderBrush="{Binding BorderColour}" BorderThickness="3" CornerRadius="4" Background="#1B1D1F"/><TextBlock Text="{Binding Slot}" Foreground="#8E969C" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8,4"/><TextBlock Text="{Binding ScopeShort}" Foreground="#FFCB36" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,4"/><Border Width="23" Height="23" Background="{Binding Swatch}" BorderBrush="#D8D8D8" BorderThickness="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="6"/><TextBlock Text="{Binding Name}" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Bottom" Margin="6,32,6,8"/></Grid></Button></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></ScrollViewer></DockPanel></Border>
     </Grid>
+    <Border Grid.Column="2" Background="#1E2226" BorderBrush="#3C444A" BorderThickness="1" Padding="8"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><TextBlock Text="PAN / TILT" FontWeight="Bold" Margin="6"/><Border x:Name="PositionPad" Grid.Row="1" Margin="8" Background="#121518" BorderBrush="#4B555C" BorderThickness="1" MouseLeftButtonDown="PositionPad_MouseLeftButtonDown"><Canvas><Ellipse x:Name="PositionMarker" Width="24" Height="24" Fill="#28A9D2" Stroke="White" StrokeThickness="2" Canvas.Left="135" Canvas.Top="135"/></Canvas></Border><Button Grid.Row="2" Content="CLEAR PROGRAMMER" Click="ClearProgrammer_Click"/></Grid></Border>
+   </Grid>
+   <Grid x:Name="CueWorkspace" Visibility="Collapsed"><Grid.ColumnDefinitions><ColumnDefinition Width="280"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#1E2226" BorderBrush="#3C444A" BorderThickness="1" Padding="10"><DockPanel><TextBlock DockPanel.Dock="Top" Text="CUE LISTS" FontWeight="Bold" FontSize="16" Margin="6"/><Button DockPanel.Dock="Bottom" Height="55" Content="ADD CUE LIST" Click="AddCueList_Click"/><ListBox x:Name="CueListSelector" ItemsSource="{Binding CueLists}" DisplayMemberPath="DisplayName" SelectionChanged="CueListSelector_SelectionChanged" Background="#20252A" Foreground="White" BorderBrush="#4B555C"/></DockPanel></Border><Border Grid.Column="1" Margin="10,0,0,0" Background="#1E2226" BorderBrush="#3C444A" BorderThickness="1" Padding="12"><DockPanel><TextBlock x:Name="CueListTitle" DockPanel.Dock="Top" Text="CUE LIST 1 (TRACKING)" FontWeight="Bold" FontSize="16" Margin="6,4,6,12"/><DataGrid x:Name="CueGrid" ItemsSource="{Binding Cues}" AutoGenerateColumns="False" CanUserAddRows="False" SelectionChanged="CueGrid_SelectionChanged"><DataGrid.Columns><DataGridTextColumn Header="Cue" Binding="{Binding Number}" Width="90"/><DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/><DataGridTextColumn Header="Fade" Binding="{Binding Fade}" Width="110"/><DataGridTextColumn Header="Values" Binding="{Binding ValueCount}" Width="100"/><DataGridTextColumn Header="Follow" Binding="{Binding Follow}" Width="110"/></DataGrid.Columns></DataGrid></DockPanel></Border></Grid>
+  </Grid>
+  <Border Grid.Row="2" Background="#101214" BorderBrush="#3C444A" BorderThickness="0,1"><Grid Margin="8,5"><Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition/><ColumnDefinition Width="2*"/></Grid.ColumnDefinitions><TextBlock x:Name="CommandModeText" Text="COMMAND [INSERT: ON]" Foreground="#00D7D7" FontWeight="Bold" VerticalAlignment="Center"/><TextBox x:Name="CommandLineText" Grid.Column="1" Background="#050606" Foreground="#FFCB36" BorderBrush="#00D7D7" FontFamily="Consolas" FontSize="17" Padding="8,3" KeyDown="CommandLineText_KeyDown"/><TextBlock x:Name="CommandHistoryText" Grid.Column="2" Foreground="#AAB2B7" FontFamily="Consolas" VerticalAlignment="Center" Margin="12,0" TextTrimming="CharacterEllipsis"/></Grid></Border>
+  <Border Grid.Row="3" Background="#22272B" BorderBrush="#3C444A" BorderThickness="0,1,0,0"><Grid Margin="8"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="240"/></Grid.ColumnDefinitions><UniformGrid Columns="8"><Button Content="BACK" Click="Back_Click"/><Button Content="PAUSE" Click="Pause_Click"/><Button Content="GO" Click="Go_Click" Background="#23864C"/><Button Content="RELEASE" Click="Release_Click"/><Button x:Name="StoreButton" Content="STORE" Click="BeginStore_Click" Background="#8B312F"/><Button Content="CUE" Click="RecordCue_Click" Background="#176B87"/><Button Content="UPDATE CUE" Click="UpdateCue_Click" Background="#7A621E"/><Button Content="DELETE CUE" Click="DeleteCue_Click"/></UniformGrid><StackPanel Grid.Column="1" Orientation="Horizontal"><Button x:Name="BlackoutButton" Width="110" Height="120" Content="BLACKOUT" Click="Blackout_Click"/><local:RotaryControl x:Name="GrandMasterSlider" Label="GRAND MASTER" Minimum="0" Maximum="255" Value="255" ValueChanged="GrandMasterSlider_ValueChanged"/></StackPanel></Grid></Border>
+ </Grid>
 </Window>
-

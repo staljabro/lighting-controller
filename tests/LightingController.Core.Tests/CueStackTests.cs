@@ -80,5 +80,57 @@ public sealed class CueStackTests
         Assert.Equal((byte)200, merged[intensity]);
         Assert.Equal((byte)10, merged[pan]);
     }
+
+    [Fact]
+    public void Resolve_PresetReferenceUsesLatestPresetValuesAndHardValuesOverride()
+    {
+        var address = new ParameterAddress(1, 0);
+        var reference = new CuePresetReference("Position", 1, PresetScope.Individual, [1]);
+        var cue = new Cue("1"); cue.AddPresetReference(reference);
+        var stack = new CueStack("List 1"); stack.Add(cue);
+        byte presetValue = 80;
+
+        var first = stack.Resolve(0, _ => new Dictionary<ParameterAddress, CueValue> { [address] = new(presetValue, ParameterKind.Position) });
+        presetValue = 160;
+        var second = stack.Resolve(0, _ => new Dictionary<ParameterAddress, CueValue> { [address] = new(presetValue, ParameterKind.Position) });
+        cue.SetValue(address, 200, ParameterKind.Position);
+        var hardOverride = stack.Resolve(0, _ => new Dictionary<ParameterAddress, CueValue> { [address] = new(160, ParameterKind.Position) });
+
+        Assert.Equal((byte)80, first[address].Value);
+        Assert.Equal((byte)160, second[address].Value);
+        Assert.Equal((byte)200, hardOverride[address].Value);
+    }
+}
+
+public sealed class FixturePatchTests
+{
+    [Fact]
+    public void Add_StoresNonOverlappingFixturesInIdOrder()
+    {
+        var patch = new FixturePatch();
+        patch.Add(new PatchedFixture(2, "Wash 1", "Generic", "Wash", "16ch", 1, 20, 16));
+        patch.Add(new PatchedFixture(1, "Beam 1", "Generic", "Beam", "16ch", 1, 1, 16));
+
+        Assert.Equal([1, 2], patch.Fixtures.Select(fixture => fixture.Id));
+    }
+
+    [Fact]
+    public void Add_RejectsAddressOverlap()
+    {
+        var patch = new FixturePatch();
+        patch.Add(new PatchedFixture(1, "Beam 1", "Generic", "Beam", "16ch", 1, 1, 16));
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            patch.Add(new PatchedFixture(2, "Beam 2", "Generic", "Beam", "16ch", 1, 16, 16)));
+
+        Assert.Contains("overlaps", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Fixture_RejectsFootprintOutsideUniverse()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new PatchedFixture(1, "Beam", "Generic", "Beam", "16ch", 1, 500, 16));
+    }
 }
 
