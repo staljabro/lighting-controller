@@ -1,4 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-dotnet run --project "$root\src\LightingController.App\LightingController.App.csproj"
+$dotnet = & "$PSScriptRoot\resolve-dotnet.ps1"
+& $dotnet run --project "$root\src\LightingController.App\LightingController.App.csproj" --disable-build-servers
+exit $LASTEXITCODE
 
