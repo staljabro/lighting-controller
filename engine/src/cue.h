@@ -21,6 +21,8 @@
 #ifndef CUE_H
 #define CUE_H
 
+#include <climits>
+
 #include <QString>
 #include <QMap>
 
@@ -35,6 +37,8 @@ class QXmlStreamWriter;
 
 #define KXMLQLCCue              QStringLiteral("Cue")
 #define KXMLQLCCueName          QStringLiteral("Name")
+#define KXMLQLCCueNumber        QStringLiteral("Number")
+#define KXMLQLCCueNotes         QStringLiteral("Notes")
 #define KXMLQLCCueValue         QStringLiteral("Value")
 #define KXMLQLCCueValueChannel  QStringLiteral("Channel")
 
@@ -42,6 +46,8 @@ class QXmlStreamWriter;
 #define KXMLQLCCueSpeedFadeIn   QStringLiteral("FadeIn")
 #define KXMLQLCCueSpeedFadeOut  QStringLiteral("FadeOut")
 #define KXMLQLCCueSpeedDuration QStringLiteral("Duration")
+#define KXMLQLCCueSpeedDelay    QStringLiteral("Delay")
+#define KXMLQLCCueSpeedFollow   QStringLiteral("Follow")
 
 class Cue final
 {
@@ -62,6 +68,20 @@ public:
 
 private:
     QString m_name;
+
+    /************************************************************************
+     * Cue-list metadata
+     ************************************************************************/
+public:
+    void setNumber(const QString& number);
+    QString number() const;
+
+    void setNotes(const QString& notes);
+    QString notes() const;
+
+private:
+    QString m_number;
+    QString m_notes;
 
     /************************************************************************
      * Values
@@ -89,10 +109,20 @@ public:
     void setDuration(uint ms);
     uint duration() const;
 
+    void setDelay(uint ms);
+    uint delay() const;
+
+    /** UINT_MAX means that this cue waits for an explicit GO command. */
+    void setFollow(uint ms);
+    uint follow() const;
+    bool hasFollow() const;
+
 private:
     uint m_fadeInSpeed;
     uint m_fadeOutSpeed;
     uint m_duration;
+    uint m_delay;
+    uint m_follow;
 
     /************************************************************************
      * Load & Save

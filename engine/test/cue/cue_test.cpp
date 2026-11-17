@@ -29,10 +29,15 @@ void Cue_Test::initial()
 {
     Cue cue;
     QCOMPARE(cue.name(), QString());
+    QCOMPARE(cue.number(), QString());
+    QCOMPARE(cue.notes(), QString());
     QCOMPARE(cue.values().size(), 0);
     QCOMPARE(cue.fadeInSpeed(), uint(0));
     QCOMPARE(cue.fadeOutSpeed(), uint(0));
     QCOMPARE(cue.duration(), uint(0));
+    QCOMPARE(cue.delay(), uint(0));
+    QCOMPARE(cue.follow(), uint(UINT_MAX));
+    QCOMPARE(cue.hasFollow(), false);
 
     cue = Cue("Foo");
     QCOMPARE(cue.name(), QString("Foo"));
@@ -55,6 +60,24 @@ void Cue_Test::name()
     Cue cue;
     cue.setName("Foobar");
     QCOMPARE(cue.name(), QString("Foobar"));
+}
+
+void Cue_Test::metadata()
+{
+    Cue cue;
+    cue.setNumber("  1.5 ");
+    cue.setNotes("House lights fade after announcement");
+    cue.setDelay(750);
+    cue.setFollow(2500);
+
+    QCOMPARE(cue.number(), QString("1.5"));
+    QCOMPARE(cue.notes(), QString("House lights fade after announcement"));
+    QCOMPARE(cue.delay(), uint(750));
+    QCOMPARE(cue.follow(), uint(2500));
+    QCOMPARE(cue.hasFollow(), true);
+
+    cue.setFollow(UINT_MAX);
+    QCOMPARE(cue.hasFollow(), false);
 }
 
 void Cue_Test::value()
@@ -95,6 +118,10 @@ void Cue_Test::copy()
     cue1.setFadeInSpeed(10);
     cue1.setFadeOutSpeed(20);
     cue1.setDuration(30);
+    cue1.setNumber("2.1");
+    cue1.setNotes("Copy metadata");
+    cue1.setDelay(40);
+    cue1.setFollow(50);
 
     Cue cue2 = cue1;
     QCOMPARE(cue2.name(), QString("Foo"));
@@ -105,6 +132,10 @@ void Cue_Test::copy()
     QCOMPARE(cue2.fadeInSpeed(), uint(10));
     QCOMPARE(cue2.fadeOutSpeed(), uint(20));
     QCOMPARE(cue2.duration(), uint(30));
+    QCOMPARE(cue2.number(), QString("2.1"));
+    QCOMPARE(cue2.notes(), QString("Copy metadata"));
+    QCOMPARE(cue2.delay(), uint(40));
+    QCOMPARE(cue2.follow(), uint(50));
 }
 
 void Cue_Test::save()
@@ -116,6 +147,10 @@ void Cue_Test::save()
     cue.setFadeInSpeed(10);
     cue.setFadeOutSpeed(20);
     cue.setDuration(30);
+    cue.setNumber("7.5");
+    cue.setNotes("A multiline\noperator note");
+    cue.setDelay(40);
+    cue.setFollow(50);
 
     QBuffer buffer;
     buffer.open(QIODevice::WriteOnly | QIODevice::Text);
@@ -134,8 +169,9 @@ void Cue_Test::save()
     xmlReader.readNextStartElement();
     QCOMPARE(xmlReader.name().toString(), QString("Cue"));
     QCOMPARE(xmlReader.attributes().value("Name").toString(), QString("Foo"));
+    QCOMPARE(xmlReader.attributes().value("Number").toString(), QString("7.5"));
 
-    int value = 0, speed = 0;
+    int value = 0, speed = 0, notes = 0;
 
     while (xmlReader.readNextStartElement())
     {
@@ -160,7 +196,14 @@ void Cue_Test::save()
             QCOMPARE(xmlReader.attributes().value("FadeIn").toString().toInt(), 10);
             QCOMPARE(xmlReader.attributes().value("FadeOut").toString().toInt(), 20);
             QCOMPARE(xmlReader.attributes().value("Duration").toString().toInt(), 30);
+            QCOMPARE(xmlReader.attributes().value("Delay").toString().toInt(), 40);
+            QCOMPARE(xmlReader.attributes().value("Follow").toString().toInt(), 50);
             xmlReader.skipCurrentElement();
+        }
+        else if (xmlReader.name().toString() == "Notes")
+        {
+            notes++;
+            QCOMPARE(xmlReader.readElementText(), QString("A multiline\noperator note"));
         }
         else
         {
@@ -171,6 +214,7 @@ void Cue_Test::save()
 
     QCOMPARE(value, 3);
     QCOMPARE(speed, 1);
+    QCOMPARE(notes, 1);
 }
 
 void Cue_Test::load()
@@ -181,6 +225,9 @@ void Cue_Test::load()
 
     xmlWriter.writeStartElement("Cue");
     xmlWriter.writeAttribute("Name", "Baz");
+    xmlWriter.writeAttribute("Number", "10.2");
+
+    xmlWriter.writeTextElement("Notes", "Wait for performer");
 
     xmlWriter.writeStartElement("Value");
     xmlWriter.writeAttribute("Channel", "1");
@@ -201,6 +248,8 @@ void Cue_Test::load()
     xmlWriter.writeAttribute("FadeIn", "100");
     xmlWriter.writeAttribute("FadeOut", "200");
     xmlWriter.writeAttribute("Duration", "300");
+    xmlWriter.writeAttribute("Delay", "400");
+    xmlWriter.writeAttribute("Follow", "500");
     xmlWriter.writeEndElement();
 
     // Extra garbage
@@ -221,6 +270,8 @@ void Cue_Test::load()
     xmlReader.readNextStartElement();
     QVERIFY(cue.loadXML(xmlReader) == true);
     QCOMPARE(cue.name(), QString("Baz"));
+    QCOMPARE(cue.number(), QString("10.2"));
+    QCOMPARE(cue.notes(), QString("Wait for performer"));
     QCOMPARE(cue.values().size(), 3);
     QCOMPARE(cue.value(0), uchar(0));
     QCOMPARE(cue.value(1), uchar(127));
@@ -229,6 +280,9 @@ void Cue_Test::load()
     QCOMPARE(cue.fadeInSpeed(), uint(100));
     QCOMPARE(cue.fadeOutSpeed(), uint(200));
     QCOMPARE(cue.duration(), uint(300));
+    QCOMPARE(cue.delay(), uint(400));
+    QCOMPARE(cue.follow(), uint(500));
+    QCOMPARE(cue.hasFollow(), true);
 }
 
 QTEST_APPLESS_MAIN(Cue_Test)

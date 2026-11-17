@@ -29,6 +29,7 @@ class Cue_Test final : public QObject
 private slots:
     void initial();
     void name();
+    void metadata();
     void value();
     void copy();
     void save();
