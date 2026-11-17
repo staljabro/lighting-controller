@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\LightingController.Core\LightingController.Core.csproj" />
+    <ProjectReference Include="..\LightingController.Fixtures\LightingController.Fixtures.csproj" />
+    <ProjectReference Include="..\LightingController.Output\LightingController.Output.csproj" />
+    <ProjectReference Include="..\LightingController.Persistence\LightingController.Persistence.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+</Project>

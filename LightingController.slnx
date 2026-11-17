@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LightingController.App/LightingController.App.csproj" />
+    <Project Path="src/LightingController.Core/LightingController.Core.csproj" />
+    <Project Path="src/LightingController.Fixtures/LightingController.Fixtures.csproj" />
+    <Project Path="src/LightingController.Output/LightingController.Output.csproj" />
+    <Project Path="src/LightingController.Persistence/LightingController.Persistence.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LightingController.Core.Tests/LightingController.Core.Tests.csproj" />
+    <Project Path="tests/LightingController.Fixtures.Tests/LightingController.Fixtures.Tests.csproj" />
+  </Folder>
+</Solution>
