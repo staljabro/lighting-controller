@@ -14,7 +14,9 @@ public sealed class FixtureProfileStoreTests
             new FixtureProfileStore().Save(fixture, path);
             var loaded = new FixtureProfileStore().Load(path);
             Assert.Equal(3, loaded.Modes[0].Channels.Count);
-            Assert.Equal(["Red", "Green", "Blue"], Assert.Single(loaded.VirtualControlChannels).TargetChannels);
+            var virtualDimmer = Assert.Single(loaded.VirtualControlChannels);
+            Assert.Equal(["Red", "Green", "Blue"], virtualDimmer.TargetChannels);
+            Assert.Equal((byte)0, virtualDimmer.DefaultValue);
         }
         finally { File.Delete(path); }
     }

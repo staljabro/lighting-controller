@@ -100,6 +100,22 @@ public sealed class CueStackTests
         Assert.Equal((byte)160, second[address].Value);
         Assert.Equal((byte)200, hardOverride[address].Value);
     }
+
+    [Fact]
+    public void Move_ReordersCuesForTimelineEditing()
+    {
+        var stack = new CueStack("Main"); stack.Add(new Cue("1")); stack.Add(new Cue("2")); stack.Add(new Cue("3"));
+        stack.Move(0, 2);
+        Assert.Equal(["2", "3", "1"], stack.Cues.Select(cue => cue.Number));
+    }
+
+    [Fact]
+    public void Copy_PreservesCueTypeFollowAndEffectReferences()
+    {
+        var cue = new Cue("1") { TriggerType = CueTriggerType.Follow, Follow = TimeSpan.FromSeconds(3) }; cue.AddEffectReference(4);
+        var copy = cue.Copy();
+        Assert.Equal(CueTriggerType.Follow, copy.TriggerType); Assert.Equal(TimeSpan.FromSeconds(3), copy.Follow); Assert.Equal([4], copy.EffectSlots);
+    }
 }
 
 public sealed class FixturePatchTests

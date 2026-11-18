@@ -11,14 +11,20 @@ public sealed record ShowFile(
     IReadOnlyList<ShowCue> Cues,
     IReadOnlyList<ShowPreset> Presets,
     IReadOnlyList<ShowFixtureGroup> Groups,
-    IReadOnlyList<ShowCueList>? CueLists = null);
+    IReadOnlyList<ShowCueList>? CueLists = null,
+    IReadOnlyList<ShowEffect>? Effects = null,
+    IReadOnlyList<ShowSelectionPreset>? SelectionPresets = null);
 
 public sealed record ShowFixture(PatchedFixture Patch, FixtureDefinition Definition, string ModeName);
-public sealed record ShowCue(string Number, string Name, double FadeSeconds, IReadOnlyList<ShowValue> Values, IReadOnlyList<ShowPresetReference>? PresetReferences = null);
+public sealed record ShowCue(string Number, string Name, double FadeSeconds, IReadOnlyList<ShowValue> Values, IReadOnlyList<ShowPresetReference>? PresetReferences = null, double? FollowSeconds = null, CueTriggerType TriggerType = CueTriggerType.Go, IReadOnlyList<int>? EffectSlots = null);
 public sealed record ShowCueList(int Number, string Name, IReadOnlyList<ShowCue> Cues);
 public sealed record ShowPresetReference(string Type, int Slot, PresetScope Scope, IReadOnlyList<int> FixtureIds);
 public sealed record ShowPreset(int Slot, string Name, string Kind, string Swatch, IReadOnlyList<ShowValue> Values, PresetScope Scope = PresetScope.Global);
-public sealed record ShowFixtureGroup(string Name, IReadOnlyList<int> FixtureIds);
+public sealed record ShowFixtureGroup(string Name, IReadOnlyList<int> FixtureIds, IReadOnlyList<ShowFixtureSelection>? Selections = null);
+public sealed record ShowFixtureSelection(int FixtureId, string? PartName = null);
+public sealed record ShowEffect(int Slot, string Name, EffectTarget Target, EffectWaveform Waveform, double RateHz, byte Low, byte High, double PhaseDegrees, IReadOnlyList<ShowFixtureSelection> Selections, EffectScope Scope = EffectScope.Selective, int Groups = 1, int Blocks = 1, int Wings = 1, IReadOnlyList<ShowEffectLine>? Lines = null);
+public sealed record ShowEffectLine(EffectAttribute Attribute, EffectWaveform Form, EffectValueMode Mode, double Low, double High, double SpeedHz, double PhaseFrom, double PhaseTo, double Width);
+public sealed record ShowSelectionPreset(int Slot, string Name, IReadOnlyList<ShowFixtureSelection> Selections);
 public sealed record ShowValue(int FixtureId, int Channel, byte Value, ParameterKind Kind)
 {
     public ParameterAddress Address => new(FixtureId, Channel);

@@ -242,7 +242,7 @@ public partial class FixtureEditorWindow : Window, INotifyPropertyChanged
             foreach (var capability in channel.CapabilityRanges) row.Capabilities.Add(new() { Minimum = capability.Minimum, Maximum = capability.Maximum, Name = capability.Name, Preset = capability.Preset ?? "" });
             Channels.Add(row);
         }
-        foreach (var channel in fixture.VirtualControlChannels) Channels.Add(new() { Name = channel.Name, Group = channel.Group ?? "Intensity", Preset = channel.Preset ?? "", IsVirtual = true, Targets = string.Join(", ", channel.TargetChannels) });
+        foreach (var channel in fixture.VirtualControlChannels) Channels.Add(new() { Name = channel.Name, Group = channel.Group ?? "Intensity", Preset = channel.Preset ?? "", IsVirtual = true, Targets = string.Join(", ", channel.TargetChannels), DefaultValue = channel.DefaultValue });
         foreach (var mode in fixture.Modes) Modes.Add(new(mode.Name, mode.Channels.OrderBy(channel => channel.Number).Select(channel => channel.ChannelName).ToArray()));
         foreach (var part in fixture.FixtureParts) Parts.Add(new() { Name = part.Name, Channels = string.Join(", ", part.ChannelNames) });
         ReindexChannels(); ChannelGrid.SelectedIndex = Channels.Count > 0 ? 0 : -1;
@@ -296,11 +296,13 @@ public sealed class ChannelEditorRow
     {
         if (string.IsNullOrWhiteSpace(Name))
             throw new InvalidDataException("Every virtual channel must have a name.");
+        if (DefaultValue is < 0 or > 255)
+            throw new InvalidDataException($"Virtual channel '{Name}' has an invalid default value.");
         var targets = Targets.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
             .Distinct(StringComparer.Ordinal).ToArray();
         if (targets.Length == 0)
             throw new InvalidDataException($"Virtual channel '{Name}' must target at least one physical channel.");
-        return new VirtualFixtureChannel(Name.Trim(), string.IsNullOrWhiteSpace(Preset) ? null : Preset, Group, targets);
+        return new VirtualFixtureChannel(Name.Trim(), string.IsNullOrWhiteSpace(Preset) ? null : Preset, Group, targets, (byte)DefaultValue);
     }
 }
 

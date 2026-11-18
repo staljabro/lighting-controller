@@ -3,6 +3,49 @@ namespace LightingController.Core;
 public enum GrandMasterMode { Reduce, Limit }
 public enum ChaserRunOrder { Forward, Backward, Bounce }
 public enum EffectWaveform { Sine, Triangle, Saw, Square }
+public enum EffectTarget { Intensity, Position, Colour }
+public enum EffectAttribute { Dimmer, Pan, Tilt, Red, Green, Blue }
+public enum EffectValueMode { Absolute, Relative }
+public enum EffectScope { Selective, Template }
+
+public sealed class ConsoleEffectLine
+{
+    public EffectAttribute Attribute { get; set; } = EffectAttribute.Dimmer;
+    public EffectWaveform Form { get; set; } = EffectWaveform.Sine;
+    public EffectValueMode Mode { get; set; } = EffectValueMode.Absolute;
+    public double Low { get; set; }
+    public double High { get; set; } = 255;
+    public double SpeedHz { get; set; } = 1;
+    public double PhaseFrom { get; set; }
+    public double PhaseTo { get; set; } = 360;
+    public double Width { get; set; } = 100;
+
+    public double Sample(TimeSpan elapsed, double fixturePhase)
+    {
+        var phase = elapsed.TotalSeconds * Math.Max(0, SpeedHz) + fixturePhase / 360d; phase -= Math.Floor(phase);
+        var normalized = Form switch { EffectWaveform.Sine => (Math.Sin(phase * Math.PI * 2 - Math.PI / 2) + 1) / 2, EffectWaveform.Triangle => 1 - Math.Abs(phase * 2 - 1), EffectWaveform.Saw => phase, EffectWaveform.Square => phase < Math.Clamp(Width / 100d, 0, 1) ? 1 : 0, _ => 0 };
+        return Low + (High - Low) * normalized;
+    }
+}
+
+public sealed class ConsoleEffectDefinition
+{
+    public EffectScope Scope { get; set; } = EffectScope.Selective;
+    public int Groups { get; set; } = 1;
+    public int Blocks { get; set; } = 1;
+    public int Wings { get; set; } = 1;
+    public List<ConsoleEffectLine> Lines { get; set; } = [new()];
+
+    public double PhaseFor(int index, int count, ConsoleEffectLine line)
+    {
+        var blocks = Math.Max(1, Blocks); var blockIndex = index / blocks; var blockCount = Math.Max(1, (int)Math.Ceiling(count / (double)blocks));
+        var wings = Math.Max(1, Wings); var wingSize = Math.Max(1, (int)Math.Ceiling(blockCount / (double)wings)); var wing = blockIndex / wingSize; var withinWing = blockIndex % wingSize;
+        if ((wing & 1) == 1) withinWing = wingSize - 1 - withinWing;
+        var groups = Math.Max(1, Groups); var groupSize = Math.Max(1, (int)Math.Ceiling(wingSize / (double)groups)); var position = withinWing % groupSize;
+        var normalized = groupSize <= 1 ? 0 : position / (double)(groupSize - 1);
+        return line.PhaseFrom + (line.PhaseTo - line.PhaseFrom) * normalized;
+    }
+}
 
 public sealed class OutputMaster
 {

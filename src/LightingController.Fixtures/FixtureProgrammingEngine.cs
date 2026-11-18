@@ -94,6 +94,33 @@ public sealed class FixtureProgrammingEngine
         }
     }
 
+    public void SetEffectAttribute(IDictionary<ParameterAddress, CueValue> values, FixtureSelection selection, EffectAttribute attribute, double value, EffectValueMode mode)
+    {
+        if (!_fixtures.TryGetValue(selection.FixtureId, out var runtime)) return;
+        var part = runtime.Definition.FixtureParts.FirstOrDefault(item => item.Name == selection.PartName);
+        var (preset, kind) = attribute switch
+        {
+            EffectAttribute.Dimmer => ("IntensityDimmer", ParameterKind.Intensity), EffectAttribute.Pan => ("PositionPan", ParameterKind.Position), EffectAttribute.Tilt => ("PositionTilt", ParameterKind.Position),
+            EffectAttribute.Red => ("IntensityRed", ParameterKind.Colour), EffectAttribute.Green => ("IntensityGreen", ParameterKind.Colour), EffectAttribute.Blue => ("IntensityBlue", ParameterKind.Colour), _ => ("", ParameterKind.Other)
+        };
+        if (attribute == EffectAttribute.Dimmer)
+        {
+            var virtualIndex = runtime.Definition.VirtualControlChannels.Select((channel, index) => (channel, index)).FirstOrDefault(item => (item.channel.Preset is "IntensityMasterDimmer" or "IntensityDimmer") && MatchesPart(item.channel.TargetChannels, part));
+            if (virtualIndex.channel is not null)
+            {
+                var address = new ParameterAddress(runtime.Patch.Id, runtime.Mode.Channels.Count + virtualIndex.index); var output = mode == EffectValueMode.Relative ? (values.TryGetValue(address, out var current) ? current.Value : virtualIndex.channel.DefaultValue) + value : value;
+                values[address] = new CueValue((byte)Math.Clamp(Math.Round(output), 0, 255), ParameterKind.Intensity); return;
+            }
+        }
+        for (var index = 0; index < runtime.Mode.Channels.Count; index++)
+        {
+            var channel = runtime.Definition.Channels[runtime.Mode.Channels[index].ChannelName];
+            if (!MatchesPart([runtime.Mode.Channels[index].ChannelName], part) || channel.Preset != preset) continue;
+            var address = new ParameterAddress(runtime.Patch.Id, index); var output = mode == EffectValueMode.Relative ? (values.TryGetValue(address, out var current) ? current.Value : channel.DefaultValue) + value : value;
+            values[address] = new CueValue((byte)Math.Clamp(Math.Round(output), 0, 255), kind);
+        }
+    }
+
     public byte[] RenderUniverse(int universe, IReadOnlyDictionary<ParameterAddress, CueValue> values, OutputMaster? master = null)
     {
         var frame = new byte[512];
@@ -105,11 +132,12 @@ public sealed class FixtureProgrammingEngine
 
             for (var virtualIndex = 0; virtualIndex < runtime.Definition.VirtualControlChannels.Count; virtualIndex++)
             {
-                if (!values.TryGetValue(new ParameterAddress(runtime.Patch.Id, physical.Length + virtualIndex), out var virtualMaster)) continue;
-                foreach (var target in runtime.Definition.VirtualControlChannels[virtualIndex].TargetChannels)
+                var virtualChannel = runtime.Definition.VirtualControlChannels[virtualIndex];
+                var virtualLevel = values.TryGetValue(new ParameterAddress(runtime.Patch.Id, physical.Length + virtualIndex), out var virtualMaster) ? virtualMaster.Value : virtualChannel.DefaultValue;
+                foreach (var target in virtualChannel.TargetChannels)
                 {
                     var targetIndex = runtime.Mode.Channels.ToList().FindIndex(channel => channel.ChannelName == target);
-                    if (targetIndex >= 0) physical[targetIndex] = (byte)Math.Round(physical[targetIndex] * virtualMaster.Value / 255d, MidpointRounding.AwayFromZero);
+                    if (targetIndex >= 0) physical[targetIndex] = (byte)Math.Round(physical[targetIndex] * virtualLevel / 255d, MidpointRounding.AwayFromZero);
                 }
             }
             for (var index = 0; index < physical.Length; index++)
@@ -120,6 +148,37 @@ public sealed class FixtureProgrammingEngine
             }
         }
         return frame;
+    }
+
+    public IReadOnlyList<FixtureAttributeTarget> ResolveAttributeTargets(IEnumerable<FixtureSelection> selections, EffectAttribute attribute)
+    {
+        var targets = new List<FixtureAttributeTarget>();
+        var (preset, kind) = attribute switch
+        {
+            EffectAttribute.Dimmer => ("IntensityDimmer", ParameterKind.Intensity), EffectAttribute.Pan => ("PositionPan", ParameterKind.Position), EffectAttribute.Tilt => ("PositionTilt", ParameterKind.Position),
+            EffectAttribute.Red => ("IntensityRed", ParameterKind.Colour), EffectAttribute.Green => ("IntensityGreen", ParameterKind.Colour), EffectAttribute.Blue => ("IntensityBlue", ParameterKind.Colour), _ => ("", ParameterKind.Other)
+        };
+        foreach (var (runtime, part) in GetFixtures(selections))
+        {
+            if (attribute == EffectAttribute.Dimmer)
+            {
+                var virtualIndex = runtime.Definition.VirtualControlChannels.Select((channel, index) => (channel, index))
+                    .FirstOrDefault(item => (item.channel.Preset is "IntensityMasterDimmer" or "IntensityDimmer") && MatchesPart(item.channel.TargetChannels, part));
+                if (virtualIndex.channel is not null)
+                {
+                    targets.Add(new(new(runtime.Patch.Id, runtime.Mode.Channels.Count + virtualIndex.index), virtualIndex.channel.DefaultValue, kind));
+                    continue;
+                }
+            }
+            for (var index = 0; index < runtime.Mode.Channels.Count; index++)
+            {
+                var modeChannel = runtime.Mode.Channels[index];
+                var channel = runtime.Definition.Channels[modeChannel.ChannelName];
+                if (MatchesPart([modeChannel.ChannelName], part) && channel.Preset == preset)
+                    targets.Add(new(new(runtime.Patch.Id, index), channel.DefaultValue, kind));
+            }
+        }
+        return targets.DistinctBy(item => item.Address).ToArray();
     }
 
     private IEnumerable<(RuntimeFixture Runtime, FixturePart? Part)> GetFixtures(IEnumerable<FixtureSelection> selections)
@@ -144,3 +203,4 @@ public sealed class FixtureProgrammingEngine
 }
 
 public readonly record struct FixtureSelection(int FixtureId, string? PartName = null);
+public readonly record struct FixtureAttributeTarget(ParameterAddress Address, byte DefaultValue, ParameterKind Kind);

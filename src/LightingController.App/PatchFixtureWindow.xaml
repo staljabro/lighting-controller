@@ -1,7 +1,7 @@
 <Window x:Class="LightingController.App.PatchFixtureWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Patch Fixture" Height="430" Width="520" ResizeMode="NoResize"
+        Title="Patch Fixture" Height="560" Width="560" ResizeMode="NoResize"
         Background="#1E2226" Foreground="White" WindowStartupLocation="CenterOwner">
     <Window.Resources>
         <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBoxStyle}"><Setter Property="Margin" Value="0,4,0,10"/><Setter Property="Padding" Value="8"/></Style>
@@ -18,11 +18,14 @@
                     <TextBlock Text="Fixture ID"/><TextBox x:Name="FixtureIdText" Text="1"/>
                     <TextBlock Text="Fixture name"/><TextBox x:Name="FixtureNameText"/>
                     <TextBlock Text="Universe"/><TextBox x:Name="UniverseText" Text="1"/>
+                    <TextBlock Text="Quantity"/><TextBox x:Name="QuantityText" Text="1"/>
+                    <TextBlock Text="Fixture ID offset"/><TextBox x:Name="IdOffsetText" Text="1"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2">
                     <TextBlock Text="Mode"/><ComboBox x:Name="ModeCombo" DisplayMemberPath="Name" SelectionChanged="ModeCombo_SelectionChanged"/>
                     <TextBlock Text="DMX address"/><TextBox x:Name="AddressText" Text="1"/>
                     <TextBlock Text="Footprint"/><TextBox x:Name="FootprintText" IsReadOnly="True"/>
+                    <TextBlock Text="Address offset (0 = footprint)"/><TextBox x:Name="AddressOffsetText" Text="0"/>
                 </StackPanel>
             </Grid>
             <TextBlock x:Name="ValidationText" Foreground="#FFB34D" TextWrapping="Wrap"/>

@@ -19,7 +19,8 @@ public sealed record VirtualFixtureChannel(
     string Name,
     string? Preset,
     string? Group,
-    IReadOnlyList<string> TargetChannels);
+    IReadOnlyList<string> TargetChannels,
+    byte DefaultValue = 0);
 
 public sealed record FixtureChannel(
     string Name,

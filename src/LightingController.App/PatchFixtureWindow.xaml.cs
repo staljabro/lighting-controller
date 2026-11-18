@@ -27,6 +27,7 @@ public partial class PatchFixtureWindow : Window
     }
 
     public PatchedFixture? Fixture { get; private set; }
+    public IReadOnlyList<PatchedFixture> Fixtures { get; private set; } = [];
     public FixtureMode? SelectedMode { get; private set; }
 
     private void ModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -46,15 +47,19 @@ public partial class PatchFixtureWindow : Window
                 throw new InvalidOperationException("Select a fixture mode.");
             }
 
-            Fixture = new PatchedFixture(
-                int.Parse(FixtureIdText.Text, CultureInfo.InvariantCulture),
-                FixtureNameText.Text,
-                _definition.Manufacturer,
-                _definition.Model,
-                mode.Name,
-                int.Parse(UniverseText.Text, CultureInfo.InvariantCulture),
-                int.Parse(AddressText.Text, CultureInfo.InvariantCulture),
-                mode.Channels.Count);
+            var firstId = int.Parse(FixtureIdText.Text, CultureInfo.InvariantCulture);
+            var firstAddress = int.Parse(AddressText.Text, CultureInfo.InvariantCulture);
+            var quantity = int.Parse(QuantityText.Text, CultureInfo.InvariantCulture);
+            var idOffset = int.Parse(IdOffsetText.Text, CultureInfo.InvariantCulture);
+            var requestedAddressOffset = int.Parse(AddressOffsetText.Text, CultureInfo.InvariantCulture);
+            if (quantity < 1 || quantity > 999) throw new ArgumentOutOfRangeException(nameof(quantity), "Quantity must be between 1 and 999.");
+            if (idOffset < 1) throw new ArgumentOutOfRangeException(nameof(idOffset), "Fixture ID offset must be positive.");
+            var addressOffset = requestedAddressOffset == 0 ? mode.Channels.Count : requestedAddressOffset;
+            var fixtures = new List<PatchedFixture>();
+            for (var index = 0; index < quantity; index++)
+                fixtures.Add(new PatchedFixture(firstId + index * idOffset, quantity == 1 ? FixtureNameText.Text : $"{FixtureNameText.Text} {index + 1}", _definition.Manufacturer, _definition.Model, mode.Name,
+                    int.Parse(UniverseText.Text, CultureInfo.InvariantCulture), firstAddress + index * addressOffset, mode.Channels.Count));
+            Fixtures = fixtures; Fixture = fixtures[0];
             SelectedMode = mode;
             DialogResult = true;
         }

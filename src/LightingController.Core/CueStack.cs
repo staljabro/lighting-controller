@@ -26,6 +26,12 @@ public sealed class CueStack
 
     public void RemoveAt(int index) => _cues.RemoveAt(index);
 
+    public void Move(int oldIndex, int newIndex)
+    {
+        if (oldIndex == newIndex) return;
+        var cue = _cues[oldIndex]; _cues.RemoveAt(oldIndex); _cues.Insert(newIndex, cue);
+    }
+
     public void Update(int index, IEnumerable<KeyValuePair<ParameterAddress, CueValue>> programmerValues)
     {
         ArgumentNullException.ThrowIfNull(programmerValues);

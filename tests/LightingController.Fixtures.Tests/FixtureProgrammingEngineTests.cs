@@ -4,6 +4,31 @@ namespace LightingController.Fixtures.Tests;
 
 public sealed class FixtureProgrammingEngineTests
 {
+    [Theory]
+    [InlineData(0)]
+    [InlineData(128)]
+    [InlineData(255)]
+    public void VirtualDimmer_UsesItsConfiguredDefaultWhenNotProgrammed(byte configuredDefault)
+    {
+        var channels = new Dictionary<string, FixtureChannel>
+        {
+            ["Red"] = new("Red", "IntensityRed", "Colour", DefaultValue: 255),
+            ["Green"] = new("Green", "IntensityGreen", "Colour", DefaultValue: 255),
+            ["Blue"] = new("Blue", "IntensityBlue", "Colour", DefaultValue: 255)
+        };
+        var mode = new FixtureMode("RGB", [new(0, "Red"), new(1, "Green"), new(2, "Blue")]);
+        var definition = new FixtureDefinition("Test", "Dark Default", "Color Changer", channels, [mode],
+            [new("Virtual Dimmer", "IntensityMasterDimmer", "Intensity", ["Red", "Green", "Blue"], configuredDefault)]);
+        var patch = new PatchedFixture(1, "RGB", "Test", "Dark Default", "RGB", 1, 1, 3);
+        var engine = new FixtureProgrammingEngine(); engine.Register(patch, definition, mode);
+
+        var frame = engine.RenderUniverse(1, new Dictionary<ParameterAddress, CueValue>());
+
+        Assert.Equal([configuredDefault, configuredDefault, configuredDefault], frame[..3]);
+        var target = Assert.Single(engine.ResolveAttributeTargets([new FixtureSelection(1)], EffectAttribute.Dimmer));
+        Assert.Equal(configuredDefault, target.DefaultValue);
+    }
+
     [Fact]
     public void RgbVirtualDimmer_ScalesColourWithoutConsumingDmxAddress()
     {

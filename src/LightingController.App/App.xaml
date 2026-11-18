@@ -8,6 +8,11 @@
         <SolidColorBrush x:Key="ControlForeground" Color="#F2F2F2"/>
         <SolidColorBrush x:Key="ControlBorder" Color="#4B555C"/>
         <SolidColorBrush x:Key="SelectionBackground" Color="#176B87"/>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#292D30"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderBrush" Value="#4B555C"/>
+            <Setter Property="Padding" Value="12,8"/><Setter Property="Margin" Value="4"/><Setter Property="FontSize" Value="14"/>
+            <Setter Property="MinHeight" Value="40"/><Setter Property="MinWidth" Value="88"/>
+        </Style>
         <Style x:Key="DarkTextBoxStyle" TargetType="TextBox">
             <Setter Property="Background" Value="{StaticResource ControlBackground}"/><Setter Property="Foreground" Value="{StaticResource ControlForeground}"/>
             <Setter Property="CaretBrush" Value="White"/><Setter Property="BorderBrush" Value="{StaticResource ControlBorder}"/><Setter Property="SelectionBrush" Value="{StaticResource SelectionBackground}"/>
