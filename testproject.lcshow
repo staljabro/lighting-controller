@@ -1,0 +1,1127 @@
+{
+  "Version": 1,
+  "Name": "testproject",
+  "Fixtures": [
+    {
+      "Patch": {
+        "Id": 1,
+        "Name": "Mood Panel 1",
+        "Manufacturer": "Joshua",
+        "Model": "Mood Panel",
+        "Mode": "Default",
+        "Universe": 1,
+        "Address": 1,
+        "ChannelCount": 12,
+        "LastAddress": 12
+      },
+      "Definition": {
+        "Manufacturer": "Joshua",
+        "Model": "Mood Panel",
+        "Type": "Color Changer",
+        "Channels": {
+          "Cell 1 Red": {
+            "Name": "Cell 1 Red",
+            "Preset": "IntensityRed",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 1 Green": {
+            "Name": "Cell 1 Green",
+            "Preset": "IntensityGreen",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 1 Blue": {
+            "Name": "Cell 1 Blue",
+            "Preset": "IntensityBlue",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 2 Red": {
+            "Name": "Cell 2 Red",
+            "Preset": "IntensityRed",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 2 Green": {
+            "Name": "Cell 2 Green",
+            "Preset": "IntensityGreen",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 2 Blue": {
+            "Name": "Cell 2 Blue",
+            "Preset": "IntensityBlue",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 3 Red": {
+            "Name": "Cell 3 Red",
+            "Preset": "IntensityRed",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 3 Green": {
+            "Name": "Cell 3 Green",
+            "Preset": "IntensityGreen",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 3 Blue": {
+            "Name": "Cell 3 Blue",
+            "Preset": "IntensityBlue",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 4 Red": {
+            "Name": "Cell 4 Red",
+            "Preset": "IntensityRed",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 4 Green": {
+            "Name": "Cell 4 Green",
+            "Preset": "IntensityGreen",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 4 Blue": {
+            "Name": "Cell 4 Blue",
+            "Preset": "IntensityBlue",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          }
+        },
+        "Modes": [
+          {
+            "Name": "Default",
+            "Channels": [
+              {
+                "Number": 0,
+                "ChannelName": "Cell 1 Red"
+              },
+              {
+                "Number": 1,
+                "ChannelName": "Cell 1 Green"
+              },
+              {
+                "Number": 2,
+                "ChannelName": "Cell 1 Blue"
+              },
+              {
+                "Number": 3,
+                "ChannelName": "Cell 2 Red"
+              },
+              {
+                "Number": 4,
+                "ChannelName": "Cell 2 Green"
+              },
+              {
+                "Number": 5,
+                "ChannelName": "Cell 2 Blue"
+              },
+              {
+                "Number": 6,
+                "ChannelName": "Cell 3 Red"
+              },
+              {
+                "Number": 7,
+                "ChannelName": "Cell 3 Green"
+              },
+              {
+                "Number": 8,
+                "ChannelName": "Cell 3 Blue"
+              },
+              {
+                "Number": 9,
+                "ChannelName": "Cell 4 Red"
+              },
+              {
+                "Number": 10,
+                "ChannelName": "Cell 4 Green"
+              },
+              {
+                "Number": 11,
+                "ChannelName": "Cell 4 Blue"
+              }
+            ]
+          }
+        ],
+        "VirtualChannels": [
+          {
+            "Name": "Cell 1 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 1 Red",
+              "Cell 1 Green",
+              "Cell 1 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 2 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 2 Red",
+              "Cell 2 Green",
+              "Cell 2 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 3 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 3 Red",
+              "Cell 3 Green",
+              "Cell 3 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 4 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 4 Red",
+              "Cell 4 Green",
+              "Cell 4 Blue"
+            ],
+            "DefaultValue": 0
+          }
+        ],
+        "Parts": [
+          {
+            "Name": "Cell 1",
+            "ChannelNames": [
+              "Cell 1 Red",
+              "Cell 1 Green",
+              "Cell 1 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 2",
+            "ChannelNames": [
+              "Cell 2 Red",
+              "Cell 2 Green",
+              "Cell 2 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 3",
+            "ChannelNames": [
+              "Cell 3 Red",
+              "Cell 3 Green",
+              "Cell 3 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 4",
+            "ChannelNames": [
+              "Cell 4 Red",
+              "Cell 4 Green",
+              "Cell 4 Blue"
+            ]
+          }
+        ],
+        "VirtualControlChannels": [
+          {
+            "Name": "Cell 1 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 1 Red",
+              "Cell 1 Green",
+              "Cell 1 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 2 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 2 Red",
+              "Cell 2 Green",
+              "Cell 2 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 3 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 3 Red",
+              "Cell 3 Green",
+              "Cell 3 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 4 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 4 Red",
+              "Cell 4 Green",
+              "Cell 4 Blue"
+            ],
+            "DefaultValue": 0
+          }
+        ],
+        "FixtureParts": [
+          {
+            "Name": "Cell 1",
+            "ChannelNames": [
+              "Cell 1 Red",
+              "Cell 1 Green",
+              "Cell 1 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 2",
+            "ChannelNames": [
+              "Cell 2 Red",
+              "Cell 2 Green",
+              "Cell 2 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 3",
+            "ChannelNames": [
+              "Cell 3 Red",
+              "Cell 3 Green",
+              "Cell 3 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 4",
+            "ChannelNames": [
+              "Cell 4 Red",
+              "Cell 4 Green",
+              "Cell 4 Blue"
+            ]
+          }
+        ]
+      },
+      "ModeName": "Default"
+    },
+    {
+      "Patch": {
+        "Id": 2,
+        "Name": "LED BAR 2",
+        "Manufacturer": "Generic",
+        "Model": "LED BAR",
+        "Mode": "Default",
+        "Universe": 1,
+        "Address": 13,
+        "ChannelCount": 24,
+        "LastAddress": 36
+      },
+      "Definition": {
+        "Manufacturer": "Generic",
+        "Model": "LED BAR",
+        "Type": "LED Bar",
+        "Channels": {
+          "Cell 1 Red": {
+            "Name": "Cell 1 Red",
+            "Preset": "IntensityRed",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 1 Green": {
+            "Name": "Cell 1 Green",
+            "Preset": "IntensityGreen",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 1 Blue": {
+            "Name": "Cell 1 Blue",
+            "Preset": "IntensityBlue",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 2 Red": {
+            "Name": "Cell 2 Red",
+            "Preset": "IntensityRed",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 2 Green": {
+            "Name": "Cell 2 Green",
+            "Preset": "IntensityGreen",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 2 Blue": {
+            "Name": "Cell 2 Blue",
+            "Preset": "IntensityBlue",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 3 Red": {
+            "Name": "Cell 3 Red",
+            "Preset": "IntensityRed",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 3 Green": {
+            "Name": "Cell 3 Green",
+            "Preset": "IntensityGreen",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 3 Blue": {
+            "Name": "Cell 3 Blue",
+            "Preset": "IntensityBlue",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 4 Red": {
+            "Name": "Cell 4 Red",
+            "Preset": "IntensityRed",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 4 Green": {
+            "Name": "Cell 4 Green",
+            "Preset": "IntensityGreen",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 4 Blue": {
+            "Name": "Cell 4 Blue",
+            "Preset": "IntensityBlue",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 5 Red": {
+            "Name": "Cell 5 Red",
+            "Preset": "IntensityRed",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 5 Green": {
+            "Name": "Cell 5 Green",
+            "Preset": "IntensityGreen",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 5 Blue": {
+            "Name": "Cell 5 Blue",
+            "Preset": "IntensityBlue",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 6 Red": {
+            "Name": "Cell 6 Red",
+            "Preset": "IntensityRed",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 6 Green": {
+            "Name": "Cell 6 Green",
+            "Preset": "IntensityGreen",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 6 Blue": {
+            "Name": "Cell 6 Blue",
+            "Preset": "IntensityBlue",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 7 Red": {
+            "Name": "Cell 7 Red",
+            "Preset": "IntensityRed",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 7 Green": {
+            "Name": "Cell 7 Green",
+            "Preset": "IntensityGreen",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 7 Blue": {
+            "Name": "Cell 7 Blue",
+            "Preset": "IntensityBlue",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 8 Red": {
+            "Name": "Cell 8 Red",
+            "Preset": "IntensityRed",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 8 Green": {
+            "Name": "Cell 8 Green",
+            "Preset": "IntensityGreen",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          },
+          "Cell 8 Blue": {
+            "Name": "Cell 8 Blue",
+            "Preset": "IntensityBlue",
+            "Group": "Colour",
+            "GroupByte": 0,
+            "DefaultValue": 255,
+            "Capabilities": [],
+            "CapabilityRanges": []
+          }
+        },
+        "Modes": [
+          {
+            "Name": "Default",
+            "Channels": [
+              {
+                "Number": 0,
+                "ChannelName": "Cell 1 Red"
+              },
+              {
+                "Number": 1,
+                "ChannelName": "Cell 1 Green"
+              },
+              {
+                "Number": 2,
+                "ChannelName": "Cell 1 Blue"
+              },
+              {
+                "Number": 3,
+                "ChannelName": "Cell 2 Red"
+              },
+              {
+                "Number": 4,
+                "ChannelName": "Cell 2 Green"
+              },
+              {
+                "Number": 5,
+                "ChannelName": "Cell 2 Blue"
+              },
+              {
+                "Number": 6,
+                "ChannelName": "Cell 3 Red"
+              },
+              {
+                "Number": 7,
+                "ChannelName": "Cell 3 Green"
+              },
+              {
+                "Number": 8,
+                "ChannelName": "Cell 3 Blue"
+              },
+              {
+                "Number": 9,
+                "ChannelName": "Cell 4 Red"
+              },
+              {
+                "Number": 10,
+                "ChannelName": "Cell 4 Green"
+              },
+              {
+                "Number": 11,
+                "ChannelName": "Cell 4 Blue"
+              },
+              {
+                "Number": 12,
+                "ChannelName": "Cell 5 Red"
+              },
+              {
+                "Number": 13,
+                "ChannelName": "Cell 5 Green"
+              },
+              {
+                "Number": 14,
+                "ChannelName": "Cell 5 Blue"
+              },
+              {
+                "Number": 15,
+                "ChannelName": "Cell 6 Red"
+              },
+              {
+                "Number": 16,
+                "ChannelName": "Cell 6 Green"
+              },
+              {
+                "Number": 17,
+                "ChannelName": "Cell 6 Blue"
+              },
+              {
+                "Number": 18,
+                "ChannelName": "Cell 7 Red"
+              },
+              {
+                "Number": 19,
+                "ChannelName": "Cell 7 Green"
+              },
+              {
+                "Number": 20,
+                "ChannelName": "Cell 7 Blue"
+              },
+              {
+                "Number": 21,
+                "ChannelName": "Cell 8 Red"
+              },
+              {
+                "Number": 22,
+                "ChannelName": "Cell 8 Green"
+              },
+              {
+                "Number": 23,
+                "ChannelName": "Cell 8 Blue"
+              }
+            ]
+          }
+        ],
+        "VirtualChannels": [
+          {
+            "Name": "Cell 1 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 1 Red",
+              "Cell 1 Green",
+              "Cell 1 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 2 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 2 Red",
+              "Cell 2 Green",
+              "Cell 2 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 3 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 3 Red",
+              "Cell 3 Green",
+              "Cell 3 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 4 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 4 Red",
+              "Cell 4 Green",
+              "Cell 4 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 5 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 5 Red",
+              "Cell 5 Green",
+              "Cell 5 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 6 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 6 Red",
+              "Cell 6 Green",
+              "Cell 6 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 7 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 7 Red",
+              "Cell 7 Green",
+              "Cell 7 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 8 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 8 Red",
+              "Cell 8 Green",
+              "Cell 8 Blue"
+            ],
+            "DefaultValue": 0
+          }
+        ],
+        "Parts": [
+          {
+            "Name": "Cell 1",
+            "ChannelNames": [
+              "Cell 1 Red",
+              "Cell 1 Green",
+              "Cell 1 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 2",
+            "ChannelNames": [
+              "Cell 2 Red",
+              "Cell 2 Green",
+              "Cell 2 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 3",
+            "ChannelNames": [
+              "Cell 3 Red",
+              "Cell 3 Green",
+              "Cell 3 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 4",
+            "ChannelNames": [
+              "Cell 4 Red",
+              "Cell 4 Green",
+              "Cell 4 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 5",
+            "ChannelNames": [
+              "Cell 5 Red",
+              "Cell 5 Green",
+              "Cell 5 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 6",
+            "ChannelNames": [
+              "Cell 6 Red",
+              "Cell 6 Green",
+              "Cell 6 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 7",
+            "ChannelNames": [
+              "Cell 7 Red",
+              "Cell 7 Green",
+              "Cell 7 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 8",
+            "ChannelNames": [
+              "Cell 8 Red",
+              "Cell 8 Green",
+              "Cell 8 Blue"
+            ]
+          }
+        ],
+        "VirtualControlChannels": [
+          {
+            "Name": "Cell 1 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 1 Red",
+              "Cell 1 Green",
+              "Cell 1 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 2 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 2 Red",
+              "Cell 2 Green",
+              "Cell 2 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 3 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 3 Red",
+              "Cell 3 Green",
+              "Cell 3 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 4 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 4 Red",
+              "Cell 4 Green",
+              "Cell 4 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 5 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 5 Red",
+              "Cell 5 Green",
+              "Cell 5 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 6 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 6 Red",
+              "Cell 6 Green",
+              "Cell 6 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 7 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 7 Red",
+              "Cell 7 Green",
+              "Cell 7 Blue"
+            ],
+            "DefaultValue": 0
+          },
+          {
+            "Name": "Cell 8 Virtual Dimmer",
+            "Preset": "IntensityMasterDimmer",
+            "Group": "Intensity",
+            "TargetChannels": [
+              "Cell 8 Red",
+              "Cell 8 Green",
+              "Cell 8 Blue"
+            ],
+            "DefaultValue": 0
+          }
+        ],
+        "FixtureParts": [
+          {
+            "Name": "Cell 1",
+            "ChannelNames": [
+              "Cell 1 Red",
+              "Cell 1 Green",
+              "Cell 1 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 2",
+            "ChannelNames": [
+              "Cell 2 Red",
+              "Cell 2 Green",
+              "Cell 2 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 3",
+            "ChannelNames": [
+              "Cell 3 Red",
+              "Cell 3 Green",
+              "Cell 3 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 4",
+            "ChannelNames": [
+              "Cell 4 Red",
+              "Cell 4 Green",
+              "Cell 4 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 5",
+            "ChannelNames": [
+              "Cell 5 Red",
+              "Cell 5 Green",
+              "Cell 5 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 6",
+            "ChannelNames": [
+              "Cell 6 Red",
+              "Cell 6 Green",
+              "Cell 6 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 7",
+            "ChannelNames": [
+              "Cell 7 Red",
+              "Cell 7 Green",
+              "Cell 7 Blue"
+            ]
+          },
+          {
+            "Name": "Cell 8",
+            "ChannelNames": [
+              "Cell 8 Red",
+              "Cell 8 Green",
+              "Cell 8 Blue"
+            ]
+          }
+        ]
+      },
+      "ModeName": "Default"
+    }
+  ],
+  "Cues": [],
+  "Presets": [],
+  "Groups": [],
+  "CueLists": [
+    {
+      "Number": 1,
+      "Name": "Cue List 1",
+      "Cues": []
+    }
+  ],
+  "Effects": [
+    {
+      "Slot": 1,
+      "Name": "Effect 1",
+      "Target": 0,
+      "Waveform": 0,
+      "RateHz": 0.1,
+      "Low": 0,
+      "High": 255,
+      "PhaseDegrees": 0,
+      "Selections": [
+        {
+          "FixtureId": 1,
+          "PartName": null
+        }
+      ],
+      "Scope": 1,
+      "Groups": 1,
+      "Blocks": 1,
+      "Wings": 1,
+      "Lines": [
+        {
+          "Attribute": 0,
+          "Form": 0,
+          "Mode": 0,
+          "Low": 0,
+          "High": 255,
+          "SpeedHz": 0.1,
+          "PhaseFrom": 0,
+          "PhaseTo": 360,
+          "Width": 100,
+          "SineOffsetDegrees": 0
+        }
+      ],
+      "PhaseAcrossFixtureParts": false
+    },
+    {
+      "Slot": 2,
+      "Name": "Effect 2",
+      "Target": 2,
+      "Waveform": 0,
+      "RateHz": 1,
+      "Low": 0,
+      "High": 255,
+      "PhaseDegrees": 0,
+      "Selections": [],
+      "Scope": 1,
+      "Groups": 1,
+      "Blocks": 1,
+      "Wings": 1,
+      "Lines": [
+        {
+          "Attribute": 3,
+          "Form": 0,
+          "Mode": 0,
+          "Low": 0,
+          "High": 255,
+          "SpeedHz": 1,
+          "PhaseFrom": 0,
+          "PhaseTo": 360,
+          "Width": 200,
+          "SineOffsetDegrees": 0
+        },
+        {
+          "Attribute": 4,
+          "Form": 0,
+          "Mode": 0,
+          "Low": 0,
+          "High": 0,
+          "SpeedHz": 1,
+          "PhaseFrom": 0,
+          "PhaseTo": 360,
+          "Width": 100,
+          "SineOffsetDegrees": 120
+        },
+        {
+          "Attribute": 5,
+          "Form": 0,
+          "Mode": 0,
+          "Low": 0,
+          "High": 0,
+          "SpeedHz": 1,
+          "PhaseFrom": 0,
+          "PhaseTo": 360,
+          "Width": 100,
+          "SineOffsetDegrees": 240
+        }
+      ],
+      "PhaseAcrossFixtureParts": true
+    }
+  ],
+  "SelectionPresets": [
+    {
+      "Slot": 1,
+      "Name": "Group 1",
+      "Selections": [
+        {
+          "FixtureId": 1,
+          "PartName": "Cell 1"
+        },
+        {
+          "FixtureId": 1,
+          "PartName": "Cell 2"
+        },
+        {
+          "FixtureId": 1,
+          "PartName": "Cell 3"
+        },
+        {
+          "FixtureId": 1,
+          "PartName": "Cell 4"
+        }
+      ]
+    }
+  ]
+}

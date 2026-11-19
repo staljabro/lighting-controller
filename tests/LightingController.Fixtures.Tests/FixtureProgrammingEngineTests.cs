@@ -116,6 +116,86 @@ public sealed class FixtureProgrammingEngineTests
     }
 
     [Fact]
+    public void WholeFixtureDimmer_ResolvesAndSetsEveryVirtualDimmer()
+    {
+        var engine = CreateTwoCellDimmerEngine();
+        var first = new ParameterAddress(1, 2);
+        var second = new ParameterAddress(1, 3);
+
+        Assert.Equal([new(first, 200, ParameterKind.Intensity), new(second, 240, ParameterKind.Intensity)],
+            engine.ResolveAttributeTargets([new(1)], EffectAttribute.Dimmer));
+        Assert.Equal(new FixtureAttributeTarget(second, 240, ParameterKind.Intensity),
+            Assert.Single(engine.ResolveAttributeTargets([new(1, "Cell 2")], EffectAttribute.Dimmer)));
+
+        var values = new Dictionary<ParameterAddress, CueValue>();
+        engine.SetIntensity(values, [1], 128);
+        Assert.Equal([(byte)128, (byte)128], engine.RenderUniverse(1, values)[..2]);
+
+        engine.SetIntensity(values, [new FixtureSelection(1, "Cell 2")], 64);
+        Assert.Equal([(byte)128, (byte)64], engine.RenderUniverse(1, values)[..2]);
+    }
+
+    [Theory]
+    [InlineData(EffectValueMode.Absolute, 60, 60)]
+    [InlineData(EffectValueMode.Relative, 160, 255)]
+    public void DimmerEffect_TargetsWholeFixtureOrSelectedCell(EffectValueMode mode, int first, int second)
+    {
+        var engine = CreateTwoCellDimmerEngine();
+        var values = new Dictionary<ParameterAddress, CueValue>
+        {
+            [new(1, 2)] = new(100, ParameterKind.Intensity)
+        };
+
+        engine.SetEffectAttribute(values, new(1), EffectAttribute.Dimmer, 60, mode);
+        Assert.Equal([(byte)first, (byte)second], engine.RenderUniverse(1, values)[..2]);
+
+        engine.SetEffectAttribute(values, new(1, "Cell 2"), EffectAttribute.Dimmer, 30, EffectValueMode.Absolute);
+        Assert.Equal([(byte)first, (byte)30], engine.RenderUniverse(1, values)[..2]);
+    }
+
+    [Fact]
+    public void EffectPhase_CanTravelAlongPartsAcrossSelectedFixtures()
+    {
+        var engine = CreateTwoCellDimmerEngine(includeSecondFixture: true);
+        var program = new ConsoleEffectDefinition
+        {
+            PhaseAcrossFixtureParts = true,
+            Lines = [new() { Attribute = EffectAttribute.Red, PhaseTo = 270 }]
+        };
+        var values = new Dictionary<ParameterAddress, CueValue>();
+        FixtureSelection[] selections = [new(2), new(1)];
+        engine.SetIntensity(values, [1, 2], 255);
+
+        engine.ApplyEffect(values, program, selections, TimeSpan.Zero);
+        Assert.Equal([(byte)255, (byte)128, (byte)0, (byte)128], engine.RenderUniverse(1, values)[..4]);
+
+        program.PhaseAcrossFixtureParts = false;
+        engine.ApplyEffect(values, program, selections, TimeSpan.Zero);
+        var frame = engine.RenderUniverse(1, values);
+        Assert.Equal(frame[0], frame[1]);
+        Assert.Equal(frame[2], frame[3]);
+    }
+
+    private static FixtureProgrammingEngine CreateTwoCellDimmerEngine(bool includeSecondFixture = false)
+    {
+        var channels = new Dictionary<string, FixtureChannel>
+        {
+            ["Red 1"] = new("Red 1", "IntensityRed", DefaultValue: 255),
+            ["Red 2"] = new("Red 2", "IntensityRed", DefaultValue: 255)
+        };
+        var fixture = new FixtureDefinition("Test", "Two Cell", "LED Bar", channels,
+            [new("Mode", [new(0, "Red 1"), new(1, "Red 2")])],
+            [new("Dimmer 1", "IntensityMasterDimmer", "Intensity", ["Red 1"], 200),
+             new("Dimmer 2", "IntensityDimmer", "Intensity", ["Red 2"], 240)],
+            [new("Cell 1", ["Red 1"]), new("Cell 2", ["Red 2"])]);
+        var engine = new FixtureProgrammingEngine();
+        engine.Register(new(1, "Bar", "Test", "Two Cell", "Mode", 1, 1, 2), fixture, fixture.Modes[0]);
+        if (includeSecondFixture)
+            engine.Register(new(2, "Bar 2", "Test", "Two Cell", "Mode", 1, 3, 2), fixture, fixture.Modes[0]);
+        return engine;
+    }
+
+    [Fact]
     public void WholeFixtureSelection_ExpandsToPartsInDefinitionOrder()
     {
         var channels = new Dictionary<string, FixtureChannel> { ["One"] = new("One", "IntensityDimmer"), ["Two"] = new("Two", "IntensityDimmer") };

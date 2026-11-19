@@ -24,7 +24,7 @@ public partial class MainWindow : Window
     private readonly Dictionary<ParameterAddress, CueValue> _programmer = [];
     private readonly Dictionary<ParameterAddress, CueValue> _inactiveProgrammer = [];
     private readonly List<CuePresetReference> _activePresetReferences = [];
-    private readonly HashSet<ParameterAddress> _presetOwnedAddresses = [];
+    private readonly Dictionary<ParameterAddress, ColourPresetRow> _presetOwnedAddresses = [];
     private readonly Dictionary<ParameterAddress, CueValue> _playbackState = [];
     private IReadOnlyDictionary<ParameterAddress, CueValue>? _fadeFrom;
     private IReadOnlyDictionary<ParameterAddress, CueValue>? _fadeTo;
@@ -277,6 +277,24 @@ public partial class MainWindow : Window
         Cues.RemoveAt(index);
         _playbackIndex = Math.Min(_playbackIndex, Cues.Count - 1);
         SetStatus($"Deleted cue {number}");
+    }
+
+    private void Delete_Click(object sender, RoutedEventArgs e)
+    {
+        if (ProgrammerWorkspace.Visibility != Visibility.Visible)
+        {
+            DeleteCue_Click(sender, e);
+            return;
+        }
+
+        if (ConsumePendingDelete())
+        {
+            SetStatus("Delete cancelled");
+            return;
+        }
+        CommandLineText.Clear();
+        AppendCommandWord("DELETE");
+        SetStatus("Click a group or preset to delete");
     }
 
     private void Go_Click(object sender, RoutedEventArgs e)
@@ -541,6 +559,7 @@ public partial class MainWindow : Window
     private void ColourPresetButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: ColourPresetRow preset }) return;
+        if (ConsumePendingDelete()) { DeletePreset(preset); return; }
         if (PendingCommandIs("rename")) { CommandLineText.Clear(); OpenPresetRename(preset); return; }
         if (_storePending)
         {
@@ -556,7 +575,7 @@ public partial class MainWindow : Window
             return;
         }
         if (preset.Values.Count == 0) { SetStatus($"Preset slot {preset.Slot} is empty"); return; }
-        foreach (var item in _programmingEngine.ResolvePresetValues(preset.Values, preset.Scope, CurrentSelections)) { _programmer[item.Key] = item.Value; _presetOwnedAddresses.Add(item.Key); }
+        foreach (var item in _programmingEngine.ResolvePresetValues(preset.Values, preset.Scope, CurrentSelections)) { _programmer[item.Key] = item.Value; _presetOwnedAddresses[item.Key] = preset; }
         _activePresetReferences.RemoveAll(item => item.Type == preset.Type);
         _activePresetReferences.Add(new(preset.Type, preset.Slot, preset.Scope, _selectedFixtures.ToArray()));
         EchoCommand($"PRESET {preset.Type.ToUpperInvariant()} {preset.Slot}");
@@ -615,6 +634,7 @@ public partial class MainWindow : Window
     private void Navigation_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: string workspace } button) return;
+        if (workspace != _activeWorkspace) ConsumePendingDelete();
         _activeWorkspace = workspace;
         PatchWorkspace.Visibility = workspace == "Patch" ? Visibility.Visible : Visibility.Collapsed;
         ProgrammerWorkspace.Visibility = workspace == "Programmer" ? Visibility.Visible : Visibility.Collapsed;
@@ -712,7 +732,7 @@ public partial class MainWindow : Window
         foreach (var slot in _activeEffectSlots) cue.AddEffectReference(slot);
     }
 
-    private IEnumerable<KeyValuePair<ParameterAddress, CueValue>> HardProgrammerValues() => _programmer.Where(item => !_presetOwnedAddresses.Contains(item.Key));
+    private IEnumerable<KeyValuePair<ParameterAddress, CueValue>> HardProgrammerValues() => _programmer.Where(item => !_presetOwnedAddresses.ContainsKey(item.Key));
 
     private void ReleasePresetOwnership(ParameterKind kind)
     {
@@ -838,7 +858,7 @@ public partial class MainWindow : Window
         var presets = ColourPresets.Where(preset => preset.Values.Count > 0).Select(preset => new ShowPreset(preset.Slot, preset.Name, preset.Type, preset.Swatch,
             preset.Values.Select(item => new ShowValue(item.Key.FixtureId, item.Key.Channel, item.Value.Value, item.Value.Kind)).ToArray(), preset.Scope)).ToArray();
         ShowFixtureGroup[] groups = [];
-        var effects = Effects.Select(item => new ShowEffect(item.Slot, item.Name, item.Target, item.Definition.Waveform, item.Definition.RateHz, item.Definition.Low, item.Definition.High, item.Definition.PhaseDegrees, item.Selections.Select(selection => new ShowFixtureSelection(selection.FixtureId, selection.PartName)).ToArray(), item.Program.Scope, item.Program.Groups, item.Program.Blocks, item.Program.Wings, item.Program.Lines.Select(line => new ShowEffectLine(line.Attribute, line.Form, line.Mode, line.Low, line.High, line.SpeedHz, line.PhaseFrom, line.PhaseTo, line.Width)).ToArray())).ToArray();
+        var effects = Effects.Select(item => new ShowEffect(item.Slot, item.Name, item.Target, item.Definition.Waveform, item.Definition.RateHz, item.Definition.Low, item.Definition.High, item.Definition.PhaseDegrees, item.Selections.Select(selection => new ShowFixtureSelection(selection.FixtureId, selection.PartName)).ToArray(), item.Program.Scope, item.Program.Groups, item.Program.Blocks, item.Program.Wings, item.Program.Lines.Select(line => new ShowEffectLine(line.Attribute, line.Form, line.Mode, line.Low, line.High, line.SpeedHz, line.PhaseFrom, line.PhaseTo, line.Width, line.SineOffsetDegrees)).ToArray(), item.Program.PhaseAcrossFixtureParts)).ToArray();
         var selections = SelectionPresets.Select(item => new ShowSelectionPreset(item.Slot, item.Name, item.Selections.Select(selection => new ShowFixtureSelection(selection.FixtureId, selection.PartName)).ToArray())).ToArray();
         new ShowFileStore().Save(new ShowFile(1, Path.GetFileNameWithoutExtension(path), fixtures, [], presets, groups, cueLists, effects, selections), path);
         RememberProject(path); SetStatus($"Saved project to {path}");
@@ -884,17 +904,30 @@ public partial class MainWindow : Window
                 _cueLists.Add(stack); CueLists.Add(new(savedList.Number, savedList.Name));
             }
             if (_cueLists.Count == 0) { _cueLists.Add(new("Cue List 1")); CueLists.Add(new(1, "Cue List 1")); }
+            var savedSelections = show.SelectionPresets ?? [];
+            var storedGroupSlots = savedSelections.Where(item => item.Slot > 0).Select(item => item.Slot).ToHashSet();
+            var nextLegacySlot = 1;
+            int AllocateLegacySlot()
+            {
+                while (!storedGroupSlots.Add(nextLegacySlot)) nextLegacySlot++;
+                return nextLegacySlot++;
+            }
             foreach (var savedGroup in show.Groups ?? [])
             {
                 var selections = savedGroup.Selections?.Select(item => new FixtureSelection(item.FixtureId, item.PartName)).ToArray() ?? savedGroup.FixtureIds.Select(id => new FixtureSelection(id)).ToArray();
-                var slot = SelectionPresets.Select(item => item.Slot).DefaultIfEmpty(0).Max() + 1; SelectionPresets.Add(new(slot, savedGroup.Name, selections));
+                SelectionPresets.Add(new(AllocateLegacySlot(), savedGroup.Name, selections));
             }
             foreach (var saved in show.Effects ?? [])
             {
-                var lines = saved.Lines?.Select(line => new ConsoleEffectLine { Attribute = line.Attribute, Form = line.Form, Mode = line.Mode, Low = line.Low, High = line.High, SpeedHz = line.SpeedHz, PhaseFrom = line.PhaseFrom, PhaseTo = line.PhaseTo, Width = line.Width }).ToList() ?? [new ConsoleEffectLine { Attribute = saved.Target switch { EffectTarget.Position => EffectAttribute.Pan, EffectTarget.Colour => EffectAttribute.Red, _ => EffectAttribute.Dimmer }, Form = saved.Waveform, SpeedHz = saved.RateHz, Low = saved.Low, High = saved.High, PhaseFrom = saved.PhaseDegrees, PhaseTo = saved.PhaseDegrees + 360 }];
-                Effects.Add(new StoredEffectRow { Slot = saved.Slot, Name = saved.Name, Program = new ConsoleEffectDefinition { Scope = saved.Scope, Groups = saved.Groups, Blocks = saved.Blocks, Wings = saved.Wings, Lines = lines }, Selections = saved.Selections.Select(item => new FixtureSelection(item.FixtureId, item.PartName)).ToArray() });
+                var lines = saved.Lines?.Select(line => new ConsoleEffectLine { Attribute = line.Attribute, Form = line.Form, Mode = line.Mode, Low = line.Low, High = line.High, SpeedHz = line.SpeedHz, PhaseFrom = line.PhaseFrom, PhaseTo = line.PhaseTo, Width = line.Width, SineOffsetDegrees = line.SineOffsetDegrees }).ToList() ?? [new ConsoleEffectLine { Attribute = saved.Target switch { EffectTarget.Position => EffectAttribute.Pan, EffectTarget.Colour => EffectAttribute.Red, _ => EffectAttribute.Dimmer }, Form = saved.Waveform, SpeedHz = saved.RateHz, Low = saved.Low, High = saved.High, PhaseFrom = saved.PhaseDegrees, PhaseTo = saved.PhaseDegrees + 360 }];
+                Effects.Add(new StoredEffectRow { Slot = saved.Slot, Name = saved.Name, Program = new ConsoleEffectDefinition { Scope = saved.Scope, Groups = saved.Groups, Blocks = saved.Blocks, Wings = saved.Wings, PhaseAcrossFixtureParts = saved.PhaseAcrossFixtureParts, Lines = lines }, Selections = saved.Selections.Select(item => new FixtureSelection(item.FixtureId, item.PartName)).ToArray() });
             }
-            foreach (var saved in show.SelectionPresets ?? []) { var slot = SelectionPresets.Select(item => item.Slot).DefaultIfEmpty(0).Max() + 1; SelectionPresets.Add(new(slot, saved.Name, saved.Selections.Select(item => new FixtureSelection(item.FixtureId, item.PartName)).ToArray())); }
+            var loadedGroupSlots = new HashSet<int>();
+            foreach (var saved in savedSelections)
+            {
+                var slot = saved.Slot > 0 && loadedGroupSlots.Add(saved.Slot) ? saved.Slot : AllocateLegacySlot();
+                SelectionPresets.Add(new(slot, saved.Name, saved.Selections.Select(item => new FixtureSelection(item.FixtureId, item.PartName)).ToArray()));
+            }
             SelectCueList(1);
             foreach (var preset in ColourPresets) { preset.Values.Clear(); preset.Name = ""; preset.Swatch = "#1B1D1F"; }
             foreach (var saved in show.Presets)
@@ -997,12 +1030,8 @@ public partial class MainWindow : Window
     }
 
     private void ApplyConsoleEffect(IDictionary<ParameterAddress, CueValue> active, ConsoleEffectDefinition program, IReadOnlyList<FixtureSelection> selections, TimeSpan elapsed)
-    {
-        if (selections.Count == 0) return;
-        foreach (var line in program.Lines)
-            for (var index = 0; index < selections.Count; index++)
-                if (!IsEffectStomped(selections[index], AttributeKind(line.Attribute))) _programmingEngine.SetEffectAttribute(active, selections[index], line.Attribute, line.Sample(elapsed, program.PhaseFor(index, selections.Count, line)), line.Mode);
-    }
+        => _programmingEngine.ApplyEffect(active, program, selections, elapsed,
+            (selection, attribute) => IsEffectStomped(selection, AttributeKind(attribute)));
 
     private bool IsEffectStomped(FixtureSelection selection, ParameterKind kind) => _stompedEffects.Any(item => item.Selection.FixtureId == selection.FixtureId && (item.Selection.PartName is null || item.Selection.PartName == selection.PartName) && (item.Kind is null || item.Kind == kind));
     private static ParameterKind AttributeKind(EffectAttribute attribute) => attribute switch { EffectAttribute.Dimmer => ParameterKind.Intensity, EffectAttribute.Pan or EffectAttribute.Tilt => ParameterKind.Position, EffectAttribute.Red or EffectAttribute.Green or EffectAttribute.Blue => ParameterKind.Colour, _ => ParameterKind.Other };
@@ -1107,7 +1136,7 @@ public partial class MainWindow : Window
             case "STORE": BeginStore_Click(this, new RoutedEventArgs()); break;
             case "CUE": RecordCue_Click(this, new RoutedEventArgs()); break;
             case "UPDATE": UpdateCue_Click(this, new RoutedEventArgs()); break;
-            case "DELETE": DeleteCue_Click(this, new RoutedEventArgs()); break;
+            case "DELETE": Delete_Click(this, new RoutedEventArgs()); break;
             case "CLEAR": ExecuteNextClearLevel(); break;
             case "STOMP": ExecuteCommand("STOMP"); break;
             case "PATCH": Navigation_Click(PatchNavigationButton, new RoutedEventArgs()); break;
@@ -1246,12 +1275,18 @@ public partial class MainWindow : Window
     {
         if (_selectedFixtures.Count == 0) { SetStatus("Select fixtures before editing an effect"); return; }
         var editor = new EffectEditorWindow(_effectProgram, _effectRunning) { Owner = this };
-        if (editor.ShowDialog() != true) return;
-        _effectProgram = editor.Program; _effectTarget = editor.Target; _effectDefinition = editor.Definition; _effectRunning = editor.Running; _effectStartedUtc = DateTime.UtcNow;
-        EffectRateEncoder.Value = _effectDefinition.RateHz; EffectLowEncoder.Value = _effectDefinition.Low; EffectHighEncoder.Value = _effectDefinition.High; EffectPhaseEncoder.Value = _effectDefinition.PhaseDegrees;
-        if (sender is Button button) button.Background = _effectRunning ? System.Windows.Media.Brushes.DarkGreen : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(92, 40, 109));
-        EchoCommand($"EFFECT {_effectTarget.ToString().ToUpperInvariant()} {_effectDefinition.Waveform.ToString().ToUpperInvariant()} RATE {_effectDefinition.RateHz:0.##}");
-        SetStatus(_effectRunning ? $"{_effectTarget} effect running" : "Effect stopped");
+        editor.ChangesApplied += (program, running) =>
+        {
+            if (running && !_effectRunning) _effectStartedUtc = DateTime.UtcNow;
+            _effectProgram = program; _effectTarget = editor.Target; _effectDefinition = editor.Definition; _effectRunning = running;
+            EffectRateEncoder.Value = _effectDefinition.RateHz; EffectLowEncoder.Value = _effectDefinition.Low; EffectHighEncoder.Value = _effectDefinition.High; EffectPhaseEncoder.Value = _effectDefinition.PhaseDegrees;
+            if (sender is Button button) button.Background = _effectRunning ? System.Windows.Media.Brushes.DarkGreen : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(92, 40, 109));
+            EchoCommand(program.Lines.Count == 1
+                ? $"EFFECT {_effectTarget.ToString().ToUpperInvariant()} {_effectDefinition.Waveform.ToString().ToUpperInvariant()} RATE {_effectDefinition.RateHz:0.##}"
+                : $"EFFECT {program.Lines.Count} LINES");
+            SetStatus(_effectRunning ? $"{_effectTarget} effect running" : "Effect stopped");
+        };
+        editor.ShowDialog();
     }
 
     private void AddChaserStep_Click(object sender, RoutedEventArgs e)
@@ -1297,6 +1332,7 @@ public partial class MainWindow : Window
     private void SelectionPresetButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: SelectionPresetRow preset }) return;
+        if (ConsumePendingDelete()) { DeleteGroup(preset); return; }
         if (PendingCommandIs("rename")) { CommandLineText.Clear(); RenameSelectionPreset(preset); return; }
         ApplySelectionPreset(preset);
         ProgrammerTitle.Text = $"PROGRAMMER — {preset.Name.ToUpperInvariant()} ({preset.OrderDescription})"; EchoCommand($"GROUP {preset.Slot}"); SetStatus($"Selected {preset.Name} in stored order: {preset.OrderDescription}");
@@ -1318,16 +1354,32 @@ public partial class MainWindow : Window
         StoredEffectRow Current() => new() { Program = CloneEffectProgram(_effectProgram), Selections = CurrentSelections.ToArray() };
         void SetActive(int slot, bool active) { if (active) _activeEffectSlots.Add(slot); else _activeEffectSlots.Remove(slot); _effectStartedUtc = DateTime.UtcNow; EchoCommand($"EFFECT {slot} {(active ? "GO" : "RELEASE")}"); }
         void Select(StoredEffectRow row) { if (row.Program.Scope == EffectScope.Selective) { _selectionOrder.Clear(); _selectedFixtures.Clear(); _selectedParts.Clear(); foreach (var selection in row.Selections) { _selectionOrder.Add(selection); if (!_selectedFixtures.Contains(selection.FixtureId)) _selectedFixtures.Add(selection.FixtureId); if (selection.PartName is not null) _selectedParts.Add(selection); } SetStatus($"Effect {row.Slot}: selection recalled; double-click to run"); } }
-        new EffectPoolWindow(Effects, Current, SetActive, Select) { Owner = this }.ShowDialog();
+        new EffectPoolWindow(Effects, Current, SetActive, Select, _activeEffectSlots.Contains) { Owner = this }.ShowDialog();
     }
 
     private void CreateEffect_Click(object sender, RoutedEventArgs e)
     {
-        var program = new ConsoleEffectDefinition { Scope = CurrentSelections.Any() ? EffectScope.Selective : EffectScope.Template };
-        var editor = new EffectEditorWindow(program, false) { Owner = this }; if (editor.ShowDialog() != true) return;
-        var slot = Effects.Select(item => item.Slot).DefaultIfEmpty(0).Max() + 1;
-        Effects.Add(new StoredEffectRow { Slot = slot, Name = $"Effect {slot}", Program = editor.Program, Selections = editor.Program.Scope == EffectScope.Selective ? CurrentSelections.ToArray() : [] });
-        EchoCommand($"STORE EFFECT {slot}"); SetStatus($"Stored effect {slot}");
+        var selections = CurrentSelections.ToArray();
+        var program = new ConsoleEffectDefinition { Scope = selections.Length > 0 ? EffectScope.Selective : EffectScope.Template };
+        var editor = new EffectEditorWindow(program, false) { Owner = this };
+        StoredEffectRow? effect = null;
+        editor.ChangesApplied += (updated, running) =>
+        {
+            if (effect is null)
+            {
+                var slot = Effects.Select(item => item.Slot).DefaultIfEmpty(0).Max() + 1;
+                effect = new StoredEffectRow { Slot = slot, Name = $"Effect {slot}", Program = updated,
+                    Selections = updated.Scope == EffectScope.Selective ? selections : [] };
+                Effects.Add(effect);
+                UpdateEffectRunning(effect.Slot, running);
+                EchoCommand($"STORE EFFECT {slot}");
+                SetStatus($"Stored effect {slot}");
+                return;
+            }
+            effect.Selections = updated.Scope == EffectScope.Selective ? selections : [];
+            ApplyStoredEffectChanges(effect, updated, running);
+        };
+        editor.ShowDialog();
     }
 
     private void EffectPresetButton_Click(object sender, RoutedEventArgs e)
@@ -1346,13 +1398,31 @@ public partial class MainWindow : Window
     private void EffectPresetButton_RightClick(object sender, MouseButtonEventArgs e)
     {
         if (sender is not Button { Tag: StoredEffectRow effect }) return; e.Handled = true;
-        var editor = new EffectEditorWindow(effect.Program, _activeEffectSlots.Contains(effect.Slot)) { Owner = this }; if (editor.ShowDialog() != true) return;
-        effect.Program = editor.Program; if (editor.Running) _activeEffectSlots.Add(effect.Slot); else _activeEffectSlots.Remove(effect.Slot); EffectsView.Items.Refresh(); EchoCommand($"UPDATE EFFECT {effect.Slot}"); SetStatus($"Updated effect {effect.Slot}");
+        var editor = new EffectEditorWindow(effect.Program, _activeEffectSlots.Contains(effect.Slot)) { Owner = this };
+        editor.ChangesApplied += (program, running) => ApplyStoredEffectChanges(effect, program, running);
+        editor.ShowDialog();
+    }
+
+    private void ApplyStoredEffectChanges(StoredEffectRow effect, ConsoleEffectDefinition program, bool running)
+    {
+        effect.Program = program;
+        UpdateEffectRunning(effect.Slot, running);
+        EchoCommand($"UPDATE EFFECT {effect.Slot}");
+        SetStatus($"Updated effect {effect.Slot}");
+    }
+
+    private void UpdateEffectRunning(int slot, bool running)
+    {
+        if (running)
+        {
+            if (_activeEffectSlots.Add(slot)) _effectStartedUtc = DateTime.UtcNow;
+        }
+        else _activeEffectSlots.Remove(slot);
     }
 
     private void ReleaseEffects_Click(object sender, RoutedEventArgs e) { _activeEffectSlots.Clear(); _armedEffectSlot = null; EffectsView.Items.Refresh(); EchoCommand("RELEASE EFFECTS"); SetStatus("Effects released"); }
 
-    private static ConsoleEffectDefinition CloneEffectProgram(ConsoleEffectDefinition source) => new() { Scope = source.Scope, Groups = source.Groups, Blocks = source.Blocks, Wings = source.Wings, Lines = source.Lines.Select(line => new ConsoleEffectLine { Attribute = line.Attribute, Form = line.Form, Mode = line.Mode, Low = line.Low, High = line.High, SpeedHz = line.SpeedHz, PhaseFrom = line.PhaseFrom, PhaseTo = line.PhaseTo, Width = line.Width }).ToList() };
+    private static ConsoleEffectDefinition CloneEffectProgram(ConsoleEffectDefinition source) => new() { Scope = source.Scope, Groups = source.Groups, Blocks = source.Blocks, Wings = source.Wings, PhaseAcrossFixtureParts = source.PhaseAcrossFixtureParts, Lines = source.Lines.Select(line => line.Copy()).ToList() };
 
     private void CueType_Click(object sender, RoutedEventArgs e)
     {
@@ -1369,6 +1439,57 @@ public partial class MainWindow : Window
     private bool PendingCommandIs(string keyword)
     {
         var tokens = ConsoleCommandParser.Parse(CommandLineText.Text); return tokens.Length > 0 && tokens[0] == keyword;
+    }
+
+    private bool ConsumePendingDelete()
+    {
+        if (!ConsoleCommandParser.Parse(CommandLineText.Text).SequenceEqual(["delete"])) return false;
+        CommandLineText.Clear();
+        return true;
+    }
+
+    private void GroupListItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not ListBoxItem { DataContext: SelectionPresetRow group } || !ConsumePendingDelete()) return;
+        e.Handled = true;
+        DeleteGroup(group);
+    }
+
+    private void DeleteGroup(SelectionPresetRow group)
+    {
+        SelectionPresets.Remove(group);
+        EchoCommand($"DELETE GROUP {group.Slot}");
+        SetStatus($"Deleted group {group.Slot}: {group.Name}");
+    }
+
+    private void DeletePreset(ColourPresetRow preset)
+    {
+        if (preset.Values.Count == 0)
+        {
+            SetStatus($"{preset.Type} preset slot {preset.Slot} is empty");
+            return;
+        }
+
+        foreach (var stack in _cueLists)
+        {
+            for (var index = 0; index < stack.Cues.Count; index++)
+            {
+                var cue = stack.Cues[index];
+                if (cue.BakePresetReference(preset.Type, preset.Slot, ResolvePresetReference) && stack == _cueStack)
+                    Cues[index].UpdateFrom(cue);
+            }
+        }
+        CueGrid.Items.Refresh();
+
+        _activePresetReferences.RemoveAll(reference => reference.Type == preset.Type && reference.Slot == preset.Slot);
+        foreach (var address in _presetOwnedAddresses.Where(item => item.Value == preset).Select(item => item.Key).ToArray())
+            _presetOwnedAddresses.Remove(address);
+
+        var indexInPool = ColourPresets.IndexOf(preset);
+        ColourPresets[indexInPool] = new(preset.Type, preset.Slot);
+        ShowPresetType(_activePresetType);
+        EchoCommand($"DELETE PRESET {preset.Type.ToUpperInvariant()} {preset.Slot}");
+        SetStatus($"Deleted {preset.Type} preset {preset.Slot}: {preset.Name}");
     }
 
     private void RenameSelectionPreset(SelectionPresetRow preset)
@@ -1447,6 +1568,12 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && ConsumePendingDelete())
+        {
+            SetStatus("Delete cancelled");
+            e.Handled = true;
+            return;
+        }
         if (e.Key == Key.Insert)
         {
             _keyboardShortcutsEnabled = !_keyboardShortcutsEnabled;
@@ -1510,7 +1637,21 @@ public partial class MainWindow : Window
             if (tokens.SequenceEqual(["back"])) { Back_Click(this, new RoutedEventArgs()); return; }
             if (tokens.SequenceEqual(["pause"])) { Pause_Click(this, new RoutedEventArgs()); EchoCommand("PAUSE"); return; }
             if (tokens.SequenceEqual(["release"])) { Release_Click(this, new RoutedEventArgs()); EchoCommand("RELEASE"); return; }
-            if (tokens.SequenceEqual(["delete", "cue"]) || tokens.SequenceEqual(["delete"])) { DeleteCue_Click(this, new RoutedEventArgs()); EchoCommand("DELETE CUE"); return; }
+            if (tokens.SequenceEqual(["delete"])) { Delete_Click(this, new RoutedEventArgs()); return; }
+            if (tokens.SequenceEqual(["delete", "cue"])) { DeleteCue_Click(this, new RoutedEventArgs()); EchoCommand("DELETE CUE"); return; }
+            if (tokens is ["delete", "group" or "selection", var group] && int.TryParse(group, out var deleteGroupSlot))
+            {
+                DeleteGroup(SelectionPresets.FirstOrDefault(item => item.Slot == deleteGroupSlot)
+                    ?? throw new InvalidOperationException($"Group {deleteGroupSlot} does not exist."));
+                return;
+            }
+            if (tokens is ["delete", "preset", var kind, var slot] && int.TryParse(slot, out var deletePresetSlot))
+            {
+                var type = PresetType(kind);
+                DeletePreset(ColourPresets.FirstOrDefault(item => item.Type == type && item.Slot == deletePresetSlot)
+                    ?? throw new InvalidOperationException("Preset slot does not exist."));
+                return;
+            }
             if (tokens.SequenceEqual(["update"])) { UpdateCue_Click(this, new RoutedEventArgs()); return; }
             if (tokens.Length >= 2 && tokens[0] == "group" && int.TryParse(tokens[1], out var groupSlot)) { RecallGroup(groupSlot); return; }
             if (tokens.Length >= 2 && tokens[0] == "selection" && int.TryParse(tokens[1], out var selectionSlot)) { var preset = SelectionPresets.FirstOrDefault(item => item.Slot == selectionSlot) ?? throw new InvalidOperationException($"Group {selectionSlot} does not exist."); ApplySelectionPreset(preset); SetStatus($"Selected {preset.Name}"); return; }
@@ -1634,7 +1775,7 @@ public partial class MainWindow : Window
     private void ApplyPresetFromCommand(string type, int slot)
     {
         var preset = ColourPresets.FirstOrDefault(item => item.Type == type && item.Slot == slot && item.Values.Count > 0) ?? throw new InvalidOperationException("Preset is empty.");
-        foreach (var item in _programmingEngine.ResolvePresetValues(preset.Values, preset.Scope, CurrentSelections)) { _programmer[item.Key] = item.Value; _presetOwnedAddresses.Add(item.Key); }
+        foreach (var item in _programmingEngine.ResolvePresetValues(preset.Values, preset.Scope, CurrentSelections)) { _programmer[item.Key] = item.Value; _presetOwnedAddresses[item.Key] = preset; }
         _activePresetReferences.RemoveAll(item => item.Type == type);
         _activePresetReferences.Add(new(type, slot, preset.Scope, _selectedFixtures.ToArray()));
         ShowPresetType(type); SetStatus($"Applied preset {type} {slot}");

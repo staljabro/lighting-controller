@@ -50,6 +50,23 @@ public sealed class Cue
         _presetReferences.Add(reference);
     }
 
+    public bool BakePresetReference(string type, int slot,
+        Func<CuePresetReference, IReadOnlyDictionary<ParameterAddress, CueValue>> resolve)
+    {
+        var index = _presetReferences.FindIndex(reference => reference.Type == type && reference.Slot == slot);
+        if (index < 0) return false;
+
+        // Later references and explicit cue values take precedence during playback.
+        var overridden = _presetReferences.Skip(index + 1)
+            .SelectMany(reference => resolve(reference).Keys).ToHashSet();
+        foreach (var (address, value) in resolve(_presetReferences[index]))
+        {
+            if (!overridden.Contains(address)) _values.TryAdd(address, value);
+        }
+        _presetReferences.RemoveAt(index);
+        return true;
+    }
+
     public void AddEffectReference(int slot) { ArgumentOutOfRangeException.ThrowIfNegativeOrZero(slot); if (!_effectSlots.Contains(slot)) _effectSlots.Add(slot); }
 
     public Cue Copy()

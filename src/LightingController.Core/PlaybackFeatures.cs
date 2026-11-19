@@ -2,7 +2,7 @@ namespace LightingController.Core;
 
 public enum GrandMasterMode { Reduce, Limit }
 public enum ChaserRunOrder { Forward, Backward, Bounce }
-public enum EffectWaveform { Sine, Triangle, Saw, Square }
+public enum EffectWaveform { Sine, Triangle, Saw, Square, SmoothPulse }
 public enum EffectTarget { Intensity, Position, Colour }
 public enum EffectAttribute { Dimmer, Pan, Tilt, Red, Green, Blue }
 public enum EffectValueMode { Absolute, Relative }
@@ -18,12 +18,26 @@ public sealed class ConsoleEffectLine
     public double SpeedHz { get; set; } = 1;
     public double PhaseFrom { get; set; }
     public double PhaseTo { get; set; } = 360;
+    public double SineOffsetDegrees { get; set; }
     public double Width { get; set; } = 100;
+
+    public ConsoleEffectLine Copy() => (ConsoleEffectLine)MemberwiseClone();
 
     public double Sample(TimeSpan elapsed, double fixturePhase)
     {
-        var phase = elapsed.TotalSeconds * Math.Max(0, SpeedHz) + fixturePhase / 360d; phase -= Math.Floor(phase);
-        var normalized = Form switch { EffectWaveform.Sine => (Math.Sin(phase * Math.PI * 2 - Math.PI / 2) + 1) / 2, EffectWaveform.Triangle => 1 - Math.Abs(phase * 2 - 1), EffectWaveform.Saw => phase, EffectWaveform.Square => phase < Math.Clamp(Width / 100d, 0, 1) ? 1 : 0, _ => 0 };
+        var phase = elapsed.TotalSeconds * Math.Max(0, SpeedHz) + fixturePhase / 360d;
+        if (Form == EffectWaveform.Sine) phase += SineOffsetDegrees % 360d / 360d;
+        phase -= Math.Floor(phase);
+        var width = Math.Clamp(Width / 100d, 0, 1);
+        var normalized = Form switch
+        {
+            EffectWaveform.Sine => (Math.Sin(phase * Math.PI * 2 - Math.PI / 2) + 1) / 2,
+            EffectWaveform.Triangle => 1 - Math.Abs(phase * 2 - 1),
+            EffectWaveform.Saw => phase,
+            EffectWaveform.Square => phase < width ? 1 : 0,
+            EffectWaveform.SmoothPulse => phase < width ? (1 - Math.Cos(2 * Math.PI * (phase / width))) / 2 : 0,
+            _ => 0
+        };
         return Low + (High - Low) * normalized;
     }
 }
@@ -34,6 +48,7 @@ public sealed class ConsoleEffectDefinition
     public int Groups { get; set; } = 1;
     public int Blocks { get; set; } = 1;
     public int Wings { get; set; } = 1;
+    public bool PhaseAcrossFixtureParts { get; set; }
     public List<ConsoleEffectLine> Lines { get; set; } = [new()];
 
     public double PhaseFor(int index, int count, ConsoleEffectLine line)
@@ -129,7 +144,7 @@ public sealed record EffectDefinition(EffectWaveform Waveform, double RateHz, by
         phase -= Math.Floor(phase);
         var normalized = Waveform switch
         {
-            EffectWaveform.Sine => (Math.Sin(phase * Math.PI * 2 - Math.PI / 2) + 1) / 2,
+            EffectWaveform.Sine or EffectWaveform.SmoothPulse => (Math.Sin(phase * Math.PI * 2 - Math.PI / 2) + 1) / 2,
             EffectWaveform.Triangle => 1 - Math.Abs(phase * 2 - 1),
             EffectWaveform.Saw => phase,
             EffectWaveform.Square => phase < .5 ? 0 : 1,

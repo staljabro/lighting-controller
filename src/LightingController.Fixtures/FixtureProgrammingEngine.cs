@@ -76,11 +76,11 @@ public sealed class FixtureProgrammingEngine
     {
         foreach (var (runtime, part) in GetFixtures(selections))
         {
-            var virtualIndex = runtime.Definition.VirtualControlChannels.Select((channel, index) => (channel, index))
-                .FirstOrDefault(item => (item.channel.Preset is "IntensityMasterDimmer" or "IntensityDimmer") && MatchesPart(item.channel.TargetChannels, part));
-            if (virtualIndex.channel is not null)
+            var virtualDimmers = ResolveVirtualDimmers(runtime, part);
+            if (virtualDimmers.Length > 0)
             {
-                Set(values, runtime, runtime.Mode.Channels.Count + virtualIndex.index, level, ParameterKind.Intensity);
+                foreach (var target in virtualDimmers)
+                    values[target.Address] = new CueValue(level, target.Kind);
                 continue;
             }
             var physical = runtime.Mode.Channels.Select((channel, index) => (channel, index))
@@ -114,6 +114,22 @@ public sealed class FixtureProgrammingEngine
         }
     }
 
+    public void ApplyEffect(IDictionary<ParameterAddress, CueValue> values, ConsoleEffectDefinition program,
+        IReadOnlyList<FixtureSelection> selections, TimeSpan elapsed, Func<FixtureSelection, EffectAttribute, bool>? isStomped = null)
+    {
+        if (program.PhaseAcrossFixtureParts) selections = ExpandWholeFixturesToParts(selections);
+        foreach (var line in program.Lines)
+        {
+            for (var index = 0; index < selections.Count; index++)
+            {
+                var selection = selections[index];
+                if (isStomped?.Invoke(selection, line.Attribute) == true) continue;
+                var phase = program.PhaseFor(index, selections.Count, line);
+                SetEffectAttribute(values, selection, line.Attribute, line.Sample(elapsed, phase), line.Mode);
+            }
+        }
+    }
+
     public void SetEffectAttribute(IDictionary<ParameterAddress, CueValue> values, FixtureSelection selection, EffectAttribute attribute, double value, EffectValueMode mode)
     {
         if (!_fixtures.TryGetValue(selection.FixtureId, out var runtime)) return;
@@ -125,19 +141,27 @@ public sealed class FixtureProgrammingEngine
         };
         if (attribute == EffectAttribute.Dimmer)
         {
-            var virtualIndex = runtime.Definition.VirtualControlChannels.Select((channel, index) => (channel, index)).FirstOrDefault(item => (item.channel.Preset is "IntensityMasterDimmer" or "IntensityDimmer") && MatchesPart(item.channel.TargetChannels, part));
-            if (virtualIndex.channel is not null)
+            var virtualDimmers = ResolveVirtualDimmers(runtime, part);
+            if (virtualDimmers.Length > 0)
             {
-                var address = new ParameterAddress(runtime.Patch.Id, runtime.Mode.Channels.Count + virtualIndex.index); var output = mode == EffectValueMode.Relative ? (values.TryGetValue(address, out var current) ? current.Value : virtualIndex.channel.DefaultValue) + value : value;
-                values[address] = new CueValue((byte)Math.Clamp(Math.Round(output), 0, 255), ParameterKind.Intensity); return;
+                foreach (var target in virtualDimmers)
+                    ApplyValue(target.Address, target.DefaultValue, target.Kind);
+                return;
             }
         }
         for (var index = 0; index < runtime.Mode.Channels.Count; index++)
         {
             var channel = runtime.Definition.Channels[runtime.Mode.Channels[index].ChannelName];
             if (!MatchesPart([runtime.Mode.Channels[index].ChannelName], part) || channel.Preset != preset) continue;
-            var address = new ParameterAddress(runtime.Patch.Id, index); var output = mode == EffectValueMode.Relative ? (values.TryGetValue(address, out var current) ? current.Value : channel.DefaultValue) + value : value;
-            values[address] = new CueValue((byte)Math.Clamp(Math.Round(output), 0, 255), kind);
+            ApplyValue(new ParameterAddress(runtime.Patch.Id, index), channel.DefaultValue, kind);
+        }
+
+        void ApplyValue(ParameterAddress address, byte defaultValue, ParameterKind targetKind)
+        {
+            var output = mode == EffectValueMode.Relative
+                ? (values.TryGetValue(address, out var current) ? current.Value : defaultValue) + value
+                : value;
+            values[address] = new CueValue((byte)Math.Clamp(Math.Round(output), 0, 255), targetKind);
         }
     }
 
@@ -182,11 +206,10 @@ public sealed class FixtureProgrammingEngine
         {
             if (attribute == EffectAttribute.Dimmer)
             {
-                var virtualIndex = runtime.Definition.VirtualControlChannels.Select((channel, index) => (channel, index))
-                    .FirstOrDefault(item => (item.channel.Preset is "IntensityMasterDimmer" or "IntensityDimmer") && MatchesPart(item.channel.TargetChannels, part));
-                if (virtualIndex.channel is not null)
+                var virtualDimmers = ResolveVirtualDimmers(runtime, part);
+                if (virtualDimmers.Length > 0)
                 {
-                    targets.Add(new(new(runtime.Patch.Id, runtime.Mode.Channels.Count + virtualIndex.index), virtualIndex.channel.DefaultValue, kind));
+                    targets.AddRange(virtualDimmers);
                     continue;
                 }
             }
@@ -200,6 +223,14 @@ public sealed class FixtureProgrammingEngine
         }
         return targets.DistinctBy(item => item.Address).ToArray();
     }
+
+    private static FixtureAttributeTarget[] ResolveVirtualDimmers(RuntimeFixture runtime, FixturePart? part) =>
+        runtime.Definition.VirtualControlChannels.Select((channel, index) => (channel, index))
+            .Where(item => (item.channel.Preset is "IntensityMasterDimmer" or "IntensityDimmer") &&
+                MatchesPart(item.channel.TargetChannels, part))
+            .Select(item => new FixtureAttributeTarget(
+                new(runtime.Patch.Id, runtime.Mode.Channels.Count + item.index), item.channel.DefaultValue, ParameterKind.Intensity))
+            .ToArray();
 
     private IEnumerable<(RuntimeFixture Runtime, FixturePart? Part)> GetFixtures(IEnumerable<FixtureSelection> selections)
     {

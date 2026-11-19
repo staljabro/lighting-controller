@@ -5,6 +5,45 @@ namespace LightingController.Core.Tests;
 public sealed class CueStackTests
 {
     [Fact]
+    public void BakePresetReference_PreservesPlaybackAndDetachesReusedSlot()
+    {
+        var baked = new ParameterAddress(1, 0);
+        var explicitValue = new ParameterAddress(1, 1);
+        var laterReference = new ParameterAddress(1, 2);
+        var deleted = new CuePresetReference("Position", 1, PresetScope.Individual, [1]);
+        var retained = new CuePresetReference("Position", 2, PresetScope.Individual, [1]);
+        var cue = new Cue("1");
+        cue.AddPresetReference(deleted);
+        cue.AddPresetReference(retained);
+        cue.SetValue(explicitValue, 0, ParameterKind.Position);
+        var stack = new CueStack("Main");
+        stack.Add(cue);
+
+        var deletedValues = new Dictionary<ParameterAddress, CueValue>
+        {
+            [baked] = new(80, ParameterKind.Position),
+            [explicitValue] = new(90, ParameterKind.Position),
+            [laterReference] = new(100, ParameterKind.Position)
+        };
+        var retainedValues = new Dictionary<ParameterAddress, CueValue>
+        {
+            [laterReference] = new(110, ParameterKind.Position)
+        };
+        IReadOnlyDictionary<ParameterAddress, CueValue> Resolve(CuePresetReference reference) =>
+            reference.Slot == deleted.Slot ? deletedValues : retainedValues;
+
+        Assert.True(cue.BakePresetReference(deleted.Type, deleted.Slot, Resolve));
+        Assert.Equal(retained, Assert.Single(cue.PresetReferences));
+        deletedValues[baked] = new(200, ParameterKind.Position);
+        retainedValues[laterReference] = new(120, ParameterKind.Position);
+
+        var output = stack.Resolve(0, Resolve);
+        Assert.Equal((byte)80, output[baked].Value);
+        Assert.Equal((byte)0, output[explicitValue].Value);
+        Assert.Equal((byte)120, output[laterReference].Value);
+    }
+
+    [Fact]
     public void Resolve_TracksValuesAndPreservesExplicitZero()
     {
         var dimmer = new ParameterAddress(1, 0);
