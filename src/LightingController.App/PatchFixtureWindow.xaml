@@ -16,6 +16,7 @@
                 <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="14"/><ColumnDefinition/></Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
                     <TextBlock Text="Fixture ID"/><TextBox x:Name="FixtureIdText" Text="1"/>
+                    <TextBlock Text="Fixture type"/><TextBox x:Name="FixtureTypeText" IsReadOnly="True"/>
                     <TextBlock Text="Fixture name"/><TextBox x:Name="FixtureNameText"/>
                     <TextBlock Text="Universe"/><TextBox x:Name="UniverseText" Text="1"/>
                     <TextBlock Text="Quantity"/><TextBox x:Name="QuantityText" Text="1"/>

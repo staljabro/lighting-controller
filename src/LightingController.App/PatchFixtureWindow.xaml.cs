@@ -15,6 +15,7 @@ public partial class PatchFixtureWindow : Window
         _definition = definition;
         InitializeComponent();
         FixtureTitle.Text = $"{definition.Manufacturer} {definition.Model}";
+        FixtureTypeText.Text = definition.Model;
         FixtureIdText.Text = suggestedId.ToString(CultureInfo.InvariantCulture);
         FixtureNameText.Text = $"{definition.Model} {suggestedId}";
         AddressText.Text = suggestedAddress.ToString(CultureInfo.InvariantCulture);

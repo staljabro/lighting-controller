@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Globalization;
 using System.IO;
 using System.Windows;
@@ -52,7 +54,6 @@ public partial class MainWindow : Window
     private readonly Chaser _liveChaser = new();
     private bool _chaserRunning;
     private DateTime _chaserStartedUtc;
-    private readonly List<FixtureSelectionGroup> _fixtureGroups = [];
     private readonly HashSet<int> _activeEffectSlots = [];
     private readonly HashSet<int> _cueEffectSlots = [];
     private readonly DispatcherTimer _commandOverlayTimer = new() { Interval = TimeSpan.FromSeconds(1.8) };
@@ -91,8 +92,8 @@ public partial class MainWindow : Window
         VisibleLibrary = [];
         ColourPresets = [];
         VisiblePresets = [];
-        FixtureGroups = [];
         SelectionPresets = [];
+        ProgrammerFixtures = [];
         Effects = [];
         foreach (var type in new[] { "Intensity", "Position", "Gobo", "Colour", "Beam", "Focus", "Control" })
             for (var slot = 1; slot <= 28; slot++) ColourPresets.Add(new ColourPresetRow(type, slot));
@@ -138,8 +139,8 @@ public partial class MainWindow : Window
     public ObservableCollection<FixtureLibraryRow> VisibleLibrary { get; }
     public ObservableCollection<ColourPresetRow> ColourPresets { get; }
     public ObservableCollection<ColourPresetRow> VisiblePresets { get; }
-    public ObservableCollection<FixtureGroupRow> FixtureGroups { get; }
     public ObservableCollection<SelectionPresetRow> SelectionPresets { get; }
+    public ObservableCollection<ProgrammerFixtureTreeRow> ProgrammerFixtures { get; }
     public ObservableCollection<StoredEffectRow> Effects { get; }
     private IEnumerable<FixtureSelection> CurrentSelections => _selectionOrder;
 
@@ -342,7 +343,7 @@ public partial class MainWindow : Window
     private void ClearSelectionCommand()
     {
         CommandLineText.Clear();
-        ProgrammerFixtureList.UnselectAll(); FixturePartList.UnselectAll(); _selectedFixtures.Clear(); _selectedParts.Clear(); _selectionOrder.Clear();
+        SelectionPresetList.SelectedIndex = -1; _selectedFixtures.Clear(); _selectedParts.Clear(); _selectionOrder.Clear(); SyncProgrammerFixtureHighlights();
         ProgrammerTitle.Text = "PROGRAMMER - NO FIXTURES SELECTED"; SetStatus("ClearSelection: fixtures deselected; programmer values retained");
     }
 
@@ -457,18 +458,8 @@ public partial class MainWindow : Window
         _selectionOrder.Clear();
         _selectedFixtures.Add(fixture.Id);
         _selectionOrder.Add(new(fixture.Id));
-        FixturePartList.ItemsSource = _programmingEngine.GetParts(fixture.Id).Select(part => new FixturePartRow(fixture.Id, part)).ToArray();
         ProgrammerTitle.Text = $"PROGRAMMER — {fixture.Name.ToUpperInvariant()}";
         SetStatus($"Selected fixture {fixture.Id}: {fixture.Name}");
-    }
-
-    private void FixturePartList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        foreach (FixturePartRow part in e.RemovedItems) _selectedParts.Remove(new(part.FixtureId, part.PartName));
-        foreach (FixturePartRow part in e.RemovedItems) _selectionOrder.Remove(new(part.FixtureId, part.PartName));
-        foreach (FixturePartRow part in e.AddedItems) { var selection = new FixtureSelection(part.FixtureId, part.PartName); _selectionOrder.RemoveAll(item => item.FixtureId == part.FixtureId && item.PartName is null); if (!_selectedParts.Contains(selection)) _selectedParts.Add(selection); if (!_selectionOrder.Contains(selection)) _selectionOrder.Add(selection); }
-        if (_selectedParts.Count > 0) SetStatus($"Selected {_selectedParts.Count} fixture part(s)");
-        else RefreshDynamicEncoders();
     }
 
     private void ApplyRgb_Click(object sender, RoutedEventArgs e)
@@ -602,11 +593,23 @@ public partial class MainWindow : Window
         _selectedFixtures.Remove(fixture.Id);
         _selectedParts.RemoveAll(part => part.FixtureId == fixture.Id);
         _selectionOrder.RemoveAll(part => part.FixtureId == fixture.Id);
-        FixturePartList.ItemsSource = null;
         _patchedModes.Remove(fixture.Id);
         _patchedDefinitions.Remove(fixture.Id);
         _programmingEngine.Remove(fixture.Id);
+        RefreshProgrammerFixtureTree();
         SetStatus($"Removed fixture {fixture.Id}: {fixture.Name}");
+    }
+
+    private void RenameFixture_Click(object sender, RoutedEventArgs e)
+    {
+        if (FixtureGrid.SelectedItem is not FixtureRow row) { SetStatus("Select a patched fixture to rename"); return; }
+        var patch = _fixturePatch.Find(row.Id); if (patch is null) return;
+        var dialog = new PresetNameWindow("fixture", row.Id, row.Name, true) { Owner = this }; if (dialog.ShowDialog() != true) return;
+        var renamed = new PatchedFixture(patch.Id, dialog.PresetName, patch.Manufacturer, patch.Model, patch.Mode, patch.Universe, patch.Address, patch.ChannelCount);
+        _fixturePatch.Remove(patch.Id); _fixturePatch.Add(renamed);
+        if (_patchedDefinitions.TryGetValue(row.Id, out var definition) && _patchedModes.TryGetValue(row.Id, out var mode)) _programmingEngine.Register(renamed, definition, mode);
+        var index = Fixtures.IndexOf(row); Fixtures[index] = FixtureRow.From(renamed); RefreshProgrammerFixtureTree();
+        FixtureGrid.SelectedIndex = index; EchoCommand($"RENAME FIXTURE {row.Id} {dialog.PresetName}"); SetStatus($"Renamed fixture {row.Id}");
     }
 
     private void Navigation_Click(object sender, RoutedEventArgs e)
@@ -661,16 +664,26 @@ public partial class MainWindow : Window
         if (PresetPoolTitle is not null) PresetPoolTitle.Text = $"{type.ToUpperInvariant()} PRESET POOL";
     }
 
-    private void ProgrammerFixtureList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void ProgrammerFixtureButton_Click(object sender, RoutedEventArgs e)
     {
-        foreach (FixtureRow removed in e.RemovedItems) _selectedFixtures.Remove(removed.Id);
-        foreach (FixtureRow removed in e.RemovedItems) _selectionOrder.RemoveAll(item => item.FixtureId == removed.Id);
-        foreach (FixtureRow added in e.AddedItems) if (!_selectedFixtures.Contains(added.Id)) { _selectedFixtures.Add(added.Id); _selectionOrder.Add(new(added.Id)); }
-        if (e.AddedItems.OfType<FixtureRow>().LastOrDefault() is not { } fixture) return;
-        _selectedParts.Clear();
-        FixturePartList.ItemsSource = _programmingEngine.GetParts(fixture.Id).Select(part => new FixturePartRow(fixture.Id, part)).ToArray();
-        ProgrammerTitle.Text = $"PROGRAMMER — {fixture.Name.ToUpperInvariant()}";
-        SetStatus($"Selection order: {string.Join(", ", _selectedFixtures)}");
+        if (sender is not Button { Tag: ProgrammerFixtureTreeRow row }) return;
+        var whole = new FixtureSelection(row.FixtureId); var selected = _selectionOrder.Contains(whole);
+        _selectionOrder.RemoveAll(item => item.FixtureId == row.FixtureId); _selectedParts.RemoveAll(item => item.FixtureId == row.FixtureId);
+        if (selected) _selectedFixtures.Remove(row.FixtureId);
+        else { if (!_selectedFixtures.Contains(row.FixtureId)) _selectedFixtures.Add(row.FixtureId); _selectionOrder.Add(whole); }
+        SetStatus(selected ? $"Deselected fixture {row.FixtureId}" : $"Selected fixture {row.FixtureId}"); e.Handled = true;
+    }
+
+    private void ProgrammerPartButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: ProgrammerFixturePartTreeRow part }) return;
+        var selection = new FixtureSelection(part.FixtureId, part.Name); var selected = _selectionOrder.Contains(selection);
+        _selectionOrder.RemoveAll(item => item.FixtureId == part.FixtureId && item.PartName is null);
+        if (selected) { _selectionOrder.Remove(selection); _selectedParts.Remove(selection); }
+        else { _selectionOrder.Add(selection); if (!_selectedParts.Contains(selection)) _selectedParts.Add(selection); }
+        if (_selectionOrder.Any(item => item.FixtureId == part.FixtureId)) { if (!_selectedFixtures.Contains(part.FixtureId)) _selectedFixtures.Add(part.FixtureId); }
+        else _selectedFixtures.Remove(part.FixtureId);
+        SetStatus(selected ? $"Deselected {part.Name}" : $"Selected {part.Name}"); e.Handled = true;
     }
 
     private void ShowPlaybackCue()
@@ -718,7 +731,26 @@ public partial class MainWindow : Window
         return Math.Min(512, lastAddress + 1);
     }
 
-    private void SetStatus(string text) { StatusText.Text = text.ToUpperInvariant(); RefreshDynamicEncoders(); }
+    private void SetStatus(string text) { StatusText.Text = text.ToUpperInvariant(); SyncProgrammerFixtureHighlights(); RefreshDynamicEncoders(); }
+
+    private void RefreshProgrammerFixtureTree()
+    {
+        ProgrammerFixtures.Clear();
+        foreach (var fixture in Fixtures)
+            ProgrammerFixtures.Add(new(fixture.Id, fixture.Name, _programmingEngine.GetParts(fixture.Id)));
+        SyncProgrammerFixtureHighlights();
+    }
+
+    private void SyncProgrammerFixtureHighlights()
+    {
+        if (ProgrammerFixtures is null) return;
+        foreach (var fixture in ProgrammerFixtures)
+        {
+            fixture.IsSelected = _selectionOrder.Contains(new FixtureSelection(fixture.FixtureId));
+            foreach (var part in fixture.Parts) part.IsSelected = _selectionOrder.Contains(new FixtureSelection(fixture.FixtureId, part.Name));
+            fixture.RefreshHighlight();
+        }
+    }
 
     private void LoadFixtureLibrary()
     {
@@ -777,6 +809,7 @@ public partial class MainWindow : Window
             _fixturePatch.Add(fixture); _patchedModes[fixture.Id] = patchWindow.SelectedMode; _patchedDefinitions[fixture.Id] = definition;
             _programmingEngine.Register(fixture, definition, patchWindow.SelectedMode); Fixtures.Add(FixtureRow.From(fixture));
         }
+        RefreshProgrammerFixtureTree();
         SetStatus($"Patched {patchWindow.Fixtures.Count} fixture(s) from U{patchWindow.Fixtures[0].Universe}.{patchWindow.Fixtures[0].Address}");
     }
 
@@ -804,7 +837,7 @@ public partial class MainWindow : Window
         var cueLists = _cueLists.Select((stack, index) => new ShowCueList(index + 1, stack.Name, stack.Cues.Select(ConvertCue).ToArray())).ToArray();
         var presets = ColourPresets.Where(preset => preset.Values.Count > 0).Select(preset => new ShowPreset(preset.Slot, preset.Name, preset.Type, preset.Swatch,
             preset.Values.Select(item => new ShowValue(item.Key.FixtureId, item.Key.Channel, item.Value.Value, item.Value.Kind)).ToArray(), preset.Scope)).ToArray();
-        var groups = FixtureGroups.Select(group => new ShowFixtureGroup(group.Name, group.Selections.Select(item => item.FixtureId).Distinct().ToArray(), group.Selections.Select(item => new ShowFixtureSelection(item.FixtureId, item.PartName)).ToArray())).ToArray();
+        ShowFixtureGroup[] groups = [];
         var effects = Effects.Select(item => new ShowEffect(item.Slot, item.Name, item.Target, item.Definition.Waveform, item.Definition.RateHz, item.Definition.Low, item.Definition.High, item.Definition.PhaseDegrees, item.Selections.Select(selection => new ShowFixtureSelection(selection.FixtureId, selection.PartName)).ToArray(), item.Program.Scope, item.Program.Groups, item.Program.Blocks, item.Program.Wings, item.Program.Lines.Select(line => new ShowEffectLine(line.Attribute, line.Form, line.Mode, line.Low, line.High, line.SpeedHz, line.PhaseFrom, line.PhaseTo, line.Width)).ToArray())).ToArray();
         var selections = SelectionPresets.Select(item => new ShowSelectionPreset(item.Slot, item.Name, item.Selections.Select(selection => new ShowFixtureSelection(selection.FixtureId, selection.PartName)).ToArray())).ToArray();
         new ShowFileStore().Save(new ShowFile(1, Path.GetFileNameWithoutExtension(path), fixtures, [], presets, groups, cueLists, effects, selections), path);
@@ -828,7 +861,6 @@ public partial class MainWindow : Window
             _programmer.Clear(); _inactiveProgrammer.Clear(); _playbackState.Clear(); _activePresetReferences.Clear(); _presetOwnedAddresses.Clear();
             _fadeFrom = null; _fadeTo = null; _playbackIndex = -1; _followDueUtc = null; _paused = false;
             _cueLists.Clear(); CueLists.Clear(); Cues.Clear(); _selectedCueListIndex = 0;
-            _fixtureGroups.Clear(); FixtureGroups.Clear();
             SelectionPresets.Clear(); Effects.Clear(); _activeEffectSlots.Clear(); _cueEffectSlots.Clear();
             foreach (var item in show.Fixtures)
             {
@@ -836,6 +868,7 @@ public partial class MainWindow : Window
                 _fixturePatch.Add(item.Patch); _programmingEngine.Register(item.Patch, item.Definition, mode);
                 _patchedDefinitions[item.Patch.Id] = item.Definition; _patchedModes[item.Patch.Id] = mode; Fixtures.Add(FixtureRow.From(item.Patch));
             }
+            RefreshProgrammerFixtureTree();
             var savedLists = show.CueLists is { Count: > 0 } ? show.CueLists : [new ShowCueList(1, "Cue List 1", show.Cues)];
             foreach (var savedList in savedLists)
             {
@@ -854,14 +887,14 @@ public partial class MainWindow : Window
             foreach (var savedGroup in show.Groups ?? [])
             {
                 var selections = savedGroup.Selections?.Select(item => new FixtureSelection(item.FixtureId, item.PartName)).ToArray() ?? savedGroup.FixtureIds.Select(id => new FixtureSelection(id)).ToArray();
-                _fixtureGroups.Add(new(savedGroup.Name, selections.Select(item => item.FixtureId))); FixtureGroups.Add(new(savedGroup.Name, selections));
+                var slot = SelectionPresets.Select(item => item.Slot).DefaultIfEmpty(0).Max() + 1; SelectionPresets.Add(new(slot, savedGroup.Name, selections));
             }
             foreach (var saved in show.Effects ?? [])
             {
                 var lines = saved.Lines?.Select(line => new ConsoleEffectLine { Attribute = line.Attribute, Form = line.Form, Mode = line.Mode, Low = line.Low, High = line.High, SpeedHz = line.SpeedHz, PhaseFrom = line.PhaseFrom, PhaseTo = line.PhaseTo, Width = line.Width }).ToList() ?? [new ConsoleEffectLine { Attribute = saved.Target switch { EffectTarget.Position => EffectAttribute.Pan, EffectTarget.Colour => EffectAttribute.Red, _ => EffectAttribute.Dimmer }, Form = saved.Waveform, SpeedHz = saved.RateHz, Low = saved.Low, High = saved.High, PhaseFrom = saved.PhaseDegrees, PhaseTo = saved.PhaseDegrees + 360 }];
                 Effects.Add(new StoredEffectRow { Slot = saved.Slot, Name = saved.Name, Program = new ConsoleEffectDefinition { Scope = saved.Scope, Groups = saved.Groups, Blocks = saved.Blocks, Wings = saved.Wings, Lines = lines }, Selections = saved.Selections.Select(item => new FixtureSelection(item.FixtureId, item.PartName)).ToArray() });
             }
-            foreach (var saved in show.SelectionPresets ?? []) SelectionPresets.Add(new(saved.Slot, saved.Name, saved.Selections.Select(item => new FixtureSelection(item.FixtureId, item.PartName)).ToArray()));
+            foreach (var saved in show.SelectionPresets ?? []) { var slot = SelectionPresets.Select(item => item.Slot).DefaultIfEmpty(0).Max() + 1; SelectionPresets.Add(new(slot, saved.Name, saved.Selections.Select(item => new FixtureSelection(item.FixtureId, item.PartName)).ToArray())); }
             SelectCueList(1);
             foreach (var preset in ColourPresets) { preset.Values.Clear(); preset.Name = ""; preset.Swatch = "#1B1D1F"; }
             foreach (var saved in show.Presets)
@@ -1244,19 +1277,13 @@ public partial class MainWindow : Window
     }
 
     private void StoreFixtureGroup_Click(object sender, RoutedEventArgs e)
-    {
-        if (_selectedFixtures.Count == 0) { SetStatus("Select fixtures before storing a group"); return; }
-        var group = new FixtureSelectionGroup($"Group {_fixtureGroups.Count + 1}", _selectedFixtures);
-        _fixtureGroups.Add(group);
-        FixtureGroups.Add(new FixtureGroupRow(group.Name, CurrentSelections.ToArray()));
-        SetStatus($"Stored {group.Name} with {group.FixtureIds.Count} fixture(s)");
-    }
+        => StoreSelectionPreset_Click(sender, e);
 
     private void StoreSelectionPreset_Click(object sender, RoutedEventArgs e)
     {
-        var selections = CurrentSelections.ToArray(); if (selections.Length == 0) { SetStatus("Select fixtures or parts before storing a selection preset"); return; }
+        var selections = _programmingEngine.ExpandWholeFixturesToParts(CurrentSelections).ToArray(); if (selections.Length == 0) { SetStatus("Select fixtures or parts before storing a fixture group"); return; }
         var slot = SelectionPresets.Select(item => item.Slot).DefaultIfEmpty(0).Max() + 1;
-        SelectionPresets.Add(new(slot, $"Selection {slot}", selections)); EchoCommand($"STORE SELECTION {slot}"); SetStatus($"Stored selection preset {slot}");
+        SelectionPresets.Add(new(slot, $"Group {slot}", selections)); EchoCommand($"STORE GROUP {slot}"); SetStatus($"Stored fixture group {slot}");
     }
 
     private void SelectionPresetList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1264,7 +1291,7 @@ public partial class MainWindow : Window
         if (SelectionPresetList.SelectedItem is not SelectionPresetRow preset) return;
         if (PendingCommandIs("rename")) { CommandLineText.Clear(); RenameSelectionPreset(preset); return; }
         ApplySelectionPreset(preset);
-        ProgrammerTitle.Text = $"PROGRAMMER — {preset.Name.ToUpperInvariant()}"; EchoCommand($"SELECTION {preset.Slot}"); SetStatus($"Selected {preset.Name}");
+        ProgrammerTitle.Text = $"PROGRAMMER — {preset.Name.ToUpperInvariant()}"; EchoCommand($"GROUP {preset.Slot}"); SetStatus($"Selected {preset.Name}");
     }
 
     private void SelectionPresetButton_Click(object sender, RoutedEventArgs e)
@@ -1272,7 +1299,7 @@ public partial class MainWindow : Window
         if (sender is not Button { Tag: SelectionPresetRow preset }) return;
         if (PendingCommandIs("rename")) { CommandLineText.Clear(); RenameSelectionPreset(preset); return; }
         ApplySelectionPreset(preset);
-        ProgrammerTitle.Text = $"PROGRAMMER — {preset.Name.ToUpperInvariant()} ({preset.OrderDescription})"; EchoCommand($"SELECTION {preset.Slot}"); SetStatus($"Selected {preset.Name} in stored order: {preset.OrderDescription}");
+        ProgrammerTitle.Text = $"PROGRAMMER — {preset.Name.ToUpperInvariant()} ({preset.OrderDescription})"; EchoCommand($"GROUP {preset.Slot}"); SetStatus($"Selected {preset.Name} in stored order: {preset.OrderDescription}");
     }
 
     private void ApplySelectionPreset(SelectionPresetRow preset)
@@ -1339,17 +1366,6 @@ public partial class MainWindow : Window
         Cues[CueGrid.SelectedIndex].UpdateFrom(cue); CueGrid.Items.Refresh(); EchoCommand($"UPDATE CUE {cue.Number}"); SetStatus($"Updated cue {cue.Number}");
     }
 
-    private void FixtureGroupList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (FixtureGroupList.SelectedItem is not FixtureGroupRow group) return;
-        if (PendingCommandIs("rename")) { CommandLineText.Clear(); RenameFixtureGroup(FixtureGroupList.SelectedIndex, group); return; }
-        _selectedFixtures.Clear(); _selectedParts.Clear(); _selectionOrder.Clear();
-        foreach (var selection in group.Selections.Where(item => Fixtures.Any(fixture => fixture.Id == item.FixtureId)))
-        { _selectionOrder.Add(selection); if (!_selectedFixtures.Contains(selection.FixtureId)) _selectedFixtures.Add(selection.FixtureId); if (selection.PartName is not null) _selectedParts.Add(selection); }
-        FixturePartList.ItemsSource = null; ProgrammerTitle.Text = $"PROGRAMMER — {group.Name.ToUpperInvariant()}";
-        EchoCommand($"GROUP {FixtureGroupList.SelectedIndex + 1}"); SetStatus($"Selected {group.Name} ({_selectedFixtures.Count} fixtures)");
-    }
-
     private bool PendingCommandIs(string keyword)
     {
         var tokens = ConsoleCommandParser.Parse(CommandLineText.Text); return tokens.Length > 0 && tokens[0] == keyword;
@@ -1357,14 +1373,8 @@ public partial class MainWindow : Window
 
     private void RenameSelectionPreset(SelectionPresetRow preset)
     {
-        var dialog = new PresetNameWindow("fixture selection", preset.Slot, preset.Name, true) { Owner = this }; if (dialog.ShowDialog() != true) return;
-        var index = SelectionPresets.IndexOf(preset); SelectionPresets[index] = new(preset.Slot, dialog.PresetName, preset.Selections); EchoCommand($"RENAME SELECTION {preset.Slot} {dialog.PresetName}"); SetStatus($"Renamed selection {preset.Slot}");
-    }
-
-    private void RenameFixtureGroup(int index, FixtureGroupRow group)
-    {
-        var dialog = new PresetNameWindow("group", index + 1, group.Name, true) { Owner = this }; if (dialog.ShowDialog() != true) return;
-        _fixtureGroups[index].Name = dialog.PresetName; FixtureGroups[index] = new(dialog.PresetName, group.Selections); EchoCommand($"RENAME GROUP {index + 1} {dialog.PresetName}"); SetStatus($"Renamed group {index + 1}");
+        var dialog = new PresetNameWindow("fixture group", preset.Slot, preset.Name, true) { Owner = this }; if (dialog.ShowDialog() != true) return;
+        var index = SelectionPresets.IndexOf(preset); SelectionPresets[index] = new(preset.Slot, dialog.PresetName, preset.Selections); EchoCommand($"RENAME GROUP {preset.Slot} {dialog.PresetName}"); SetStatus($"Renamed group {preset.Slot}");
     }
 
     private void RenameEffect(StoredEffectRow effect)
@@ -1374,13 +1384,11 @@ public partial class MainWindow : Window
     }
 
     private void RenameGroupCommand(int slot, string name)
-    {
-        if (slot < 1 || slot > FixtureGroups.Count || string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("A valid group and name are required."); var row = FixtureGroups[slot - 1]; _fixtureGroups[slot - 1].Name = name.Trim(); FixtureGroups[slot - 1] = new(name.Trim(), row.Selections); SetStatus($"Renamed group {slot}");
-    }
+        => RenameSelectionCommand(slot, name);
 
     private void RenameSelectionCommand(int slot, string name)
     {
-        var row = SelectionPresets.FirstOrDefault(item => item.Slot == slot) ?? throw new InvalidOperationException($"Selection {slot} does not exist."); if (string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("A name is required."); SelectionPresets[SelectionPresets.IndexOf(row)] = new(row.Slot, name.Trim(), row.Selections); SetStatus($"Renamed selection {slot}");
+        var row = SelectionPresets.FirstOrDefault(item => item.Slot == slot) ?? throw new InvalidOperationException($"Group {slot} does not exist."); if (string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("A name is required."); SelectionPresets[SelectionPresets.IndexOf(row)] = new(row.Slot, name.Trim(), row.Selections); SetStatus($"Renamed group {slot}");
     }
 
     private void RenameEffectCommand(int slot, string name)
@@ -1505,7 +1513,7 @@ public partial class MainWindow : Window
             if (tokens.SequenceEqual(["delete", "cue"]) || tokens.SequenceEqual(["delete"])) { DeleteCue_Click(this, new RoutedEventArgs()); EchoCommand("DELETE CUE"); return; }
             if (tokens.SequenceEqual(["update"])) { UpdateCue_Click(this, new RoutedEventArgs()); return; }
             if (tokens.Length >= 2 && tokens[0] == "group" && int.TryParse(tokens[1], out var groupSlot)) { RecallGroup(groupSlot); return; }
-            if (tokens.Length >= 2 && tokens[0] == "selection" && int.TryParse(tokens[1], out var selectionSlot)) { var preset = SelectionPresets.FirstOrDefault(item => item.Slot == selectionSlot) ?? throw new InvalidOperationException($"Selection {selectionSlot} does not exist."); ApplySelectionPreset(preset); SetStatus($"Selected {preset.Name}"); return; }
+            if (tokens.Length >= 2 && tokens[0] == "selection" && int.TryParse(tokens[1], out var selectionSlot)) { var preset = SelectionPresets.FirstOrDefault(item => item.Slot == selectionSlot) ?? throw new InvalidOperationException($"Group {selectionSlot} does not exist."); ApplySelectionPreset(preset); SetStatus($"Selected {preset.Name}"); return; }
             if (tokens.Length >= 2 && tokens[0] == "effect" && int.TryParse(tokens[1], out var effectSlot)) { RunEffectFromCommand(effectSlot); return; }
             if (tokens.Length >= 3 && tokens[0] == "release" && tokens[1] == "effect" && int.TryParse(tokens[2], out var releaseEffect)) { _activeEffectSlots.Remove(releaseEffect); EffectsView.Items.Refresh(); SetStatus($"Released effect {releaseEffect}"); return; }
             if (tokens.SequenceEqual(["add", "chaser", "step"])) { AddChaserStep_Click(this, new RoutedEventArgs()); return; }
@@ -1557,9 +1565,8 @@ public partial class MainWindow : Window
 
     private void RecallGroup(int slot)
     {
-        if (slot < 1 || slot > FixtureGroups.Count) throw new InvalidOperationException($"Group {slot} does not exist.");
-        var group = FixtureGroups[slot - 1]; _selectionOrder.Clear(); _selectedFixtures.Clear(); _selectedParts.Clear();
-        foreach (var selection in group.Selections) { _selectionOrder.Add(selection); if (!_selectedFixtures.Contains(selection.FixtureId)) _selectedFixtures.Add(selection.FixtureId); if (selection.PartName is not null) _selectedParts.Add(selection); }
+        var group = SelectionPresets.FirstOrDefault(item => item.Slot == slot) ?? throw new InvalidOperationException($"Group {slot} does not exist.");
+        ApplySelectionPreset(group);
         SetStatus($"Selected group {slot}: {group.Name}");
     }
 
@@ -1730,11 +1737,43 @@ public sealed record FixturePartRow(int FixtureId, string PartName)
     public string DisplayName => $"{FixtureId}.{PartName}";
 }
 
-public sealed record FixtureGroupRow(string Name, IReadOnlyList<FixtureSelection> Selections);
 public sealed record SelectionPresetRow(int Slot, string Name, IReadOnlyList<FixtureSelection> Selections)
 {
     public string DisplayName => $"{Slot}  {Name}";
     public string OrderDescription => string.Join(" → ", Selections.Select(item => item.PartName is null ? item.FixtureId.ToString() : $"{item.FixtureId}.{item.PartName}"));
+}
+
+public sealed class ProgrammerFixtureTreeRow : INotifyPropertyChanged
+{
+    private bool _isExpanded;
+    private bool _isSelected;
+    public ProgrammerFixtureTreeRow(int fixtureId, string name, IEnumerable<string> parts)
+    {
+        FixtureId = fixtureId; Name = name; Parts = new(parts.Select(part => new ProgrammerFixturePartTreeRow(fixtureId, part, RefreshHighlight)));
+    }
+    public int FixtureId { get; }
+    public string Name { get; }
+    public string DisplayName => $"{FixtureId} - {Name}";
+    public ObservableCollection<ProgrammerFixturePartTreeRow> Parts { get; }
+    public Visibility PartsVisibility => Visibility.Visible;
+    public bool IsExpanded { get => _isExpanded; set { if (_isExpanded == value) return; _isExpanded = value; Changed(); Changed(nameof(IsHighlighted)); } }
+    public bool IsSelected { get => _isSelected; set { if (_isSelected == value) return; _isSelected = value; Changed(); Changed(nameof(IsHighlighted)); } }
+    public bool IsHighlighted => IsSelected || (!IsExpanded && Parts.Any(part => part.IsSelected));
+    public void RefreshHighlight() => Changed(nameof(IsHighlighted));
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));
+}
+
+public sealed class ProgrammerFixturePartTreeRow : INotifyPropertyChanged
+{
+    private readonly Action _changed;
+    private bool _isSelected;
+    public ProgrammerFixturePartTreeRow(int fixtureId, string name, Action changed) { FixtureId = fixtureId; Name = name; _changed = changed; }
+    public int FixtureId { get; }
+    public string Name { get; }
+    public string DisplayName => $"{new string('\u2007', FixtureId.ToString(CultureInfo.InvariantCulture).Length)} - {Name}";
+    public bool IsSelected { get => _isSelected; set { if (_isSelected == value) return; _isSelected = value; PropertyChanged?.Invoke(this, new(nameof(IsSelected))); _changed(); } }
+    public event PropertyChangedEventHandler? PropertyChanged;
 }
 
 public sealed record CueListRow(int Number, string Name)
@@ -1754,10 +1793,10 @@ public sealed class ColourPresetRow(string type, int slot)
     public Dictionary<ParameterAddress, CueValue> Values { get; } = [];
 }
 
-public sealed record FixtureRow(int Id, string Name, int Universe, int Address)
+public sealed record FixtureRow(int Id, string FixtureType, string Name, int Universe, int Address)
 {
     public static FixtureRow From(PatchedFixture fixture) =>
-        new(fixture.Id, fixture.Name, fixture.Universe, fixture.Address);
+        new(fixture.Id, fixture.Model, fixture.Name, fixture.Universe, fixture.Address);
 }
 
 public sealed class CueRow

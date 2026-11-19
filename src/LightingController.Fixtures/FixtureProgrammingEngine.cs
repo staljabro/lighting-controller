@@ -14,6 +14,26 @@ public sealed class FixtureProgrammingEngine
     public IReadOnlyList<string> GetParts(int fixtureId) => _fixtures.TryGetValue(fixtureId, out var runtime)
         ? runtime.Definition.FixtureParts.Select(part => part.Name).ToArray() : [];
 
+    public IReadOnlyList<FixtureSelection> ExpandWholeFixturesToParts(IEnumerable<FixtureSelection> selections)
+    {
+        var result = new List<FixtureSelection>();
+        var seen = new HashSet<FixtureSelection>();
+        foreach (var selection in selections)
+        {
+            if (!string.IsNullOrWhiteSpace(selection.PartName) || !_fixtures.TryGetValue(selection.FixtureId, out var runtime) || runtime.Definition.FixtureParts.Count == 0)
+            {
+                if (seen.Add(selection)) result.Add(selection);
+                continue;
+            }
+            foreach (var part in runtime.Definition.FixtureParts)
+            {
+                var expanded = new FixtureSelection(selection.FixtureId, part.Name);
+                if (seen.Add(expanded)) result.Add(expanded);
+            }
+        }
+        return result;
+    }
+
     public bool BelongsToSelection(ParameterAddress address, IEnumerable<FixtureSelection> selections)
     {
         foreach (var selection in selections)

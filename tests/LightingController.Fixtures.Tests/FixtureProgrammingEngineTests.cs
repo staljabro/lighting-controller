@@ -114,4 +114,17 @@ public sealed class FixtureProgrammingEngineTests
         Assert.Equal([(byte)0, (byte)0, (byte)0], frame[..3]);
         Assert.Equal([(byte)100, (byte)50, (byte)25], frame[3..6]);
     }
+
+    [Fact]
+    public void WholeFixtureSelection_ExpandsToPartsInDefinitionOrder()
+    {
+        var channels = new Dictionary<string, FixtureChannel> { ["One"] = new("One", "IntensityDimmer"), ["Two"] = new("Two", "IntensityDimmer") };
+        var fixture = new FixtureDefinition("Test", "Parts", "Other", channels, [new("Mode", [new(0, "One"), new(1, "Two")])],
+            Parts: [new("Cell 2", ["Two"]), new("Cell 1", ["One"])]);
+        var engine = new FixtureProgrammingEngine(); engine.Register(new(4, "Parts", "Test", "Parts", "Mode", 1, 1, 2), fixture, fixture.Modes[0]);
+
+        var expanded = engine.ExpandWholeFixturesToParts([new(4)]);
+
+        Assert.Equal([new FixtureSelection(4, "Cell 2"), new FixtureSelection(4, "Cell 1")], expanded);
+    }
 }
