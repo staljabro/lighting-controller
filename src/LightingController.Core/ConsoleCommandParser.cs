@@ -14,6 +14,14 @@ public static class ConsoleCommandParser
         .SelectMany(ExpandToken)
         .ToArray();
 
+    public static string RemoveLastStroke(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+        var trimmed = input.TrimEnd();
+        var separator = trimmed.LastIndexOf(' ');
+        return separator < 0 ? string.Empty : trimmed[..(separator + 1)];
+    }
+
     private static IEnumerable<string> ExpandToken(string token)
     {
         if (token.Length is >= 1 and <= 3 && token.All(character => character is 'x' or 'X'))

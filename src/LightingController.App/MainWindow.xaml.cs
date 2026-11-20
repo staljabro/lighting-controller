@@ -297,6 +297,13 @@ public partial class MainWindow : Window
         SetStatus("Click a group or preset to delete");
     }
 
+    private void RenameKeyword_Click(object sender, RoutedEventArgs e)
+    {
+        CommandLineText.Clear();
+        AppendCommandWord("RENAME");
+        SetStatus("Click a fixture, cue, cue list, group, effect, or preset to rename");
+    }
+
     private void Go_Click(object sender, RoutedEventArgs e)
     {
         if (_cueStack.Cues.Count == 0)
@@ -471,6 +478,9 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (ConsumePendingDelete()) { RemoveFixture_Click(sender, new RoutedEventArgs()); return; }
+        if (PendingCommandIs("rename")) { CommandLineText.Clear(); RenameFixture_Click(sender, new RoutedEventArgs()); return; }
+
         _selectedFixtures.Clear();
         _selectedParts.Clear();
         _selectionOrder.Clear();
@@ -552,8 +562,16 @@ public partial class MainWindow : Window
     {
         _storePending = !_storePending;
         StoreButton.Content = _storePending ? "STORE: SELECT TARGET" : "STORE";
-        EchoCommand(_storePending ? "STORE" : "ESCAPE");
+        CommandLineText.Clear();
+        if (_storePending) AppendCommandWord("STORE");
+        else EchoCommand("ESCAPE");
         SetStatus(_storePending ? "Store active — click a preset slot or CUE" : "Store cancelled");
+    }
+
+    private void BeginUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        CommandLineText.Clear(); AppendCommandWord("UPDATE");
+        SetStatus("Update active — choose programmer attributes, then a cue");
     }
 
     private void ColourPresetButton_Click(object sender, RoutedEventArgs e)
@@ -561,7 +579,7 @@ public partial class MainWindow : Window
         if (sender is not Button { Tag: ColourPresetRow preset }) return;
         if (ConsumePendingDelete()) { DeletePreset(preset); return; }
         if (PendingCommandIs("rename")) { CommandLineText.Clear(); OpenPresetRename(preset); return; }
-        if (_storePending)
+        if (_storePending || PendingCommandIs("store"))
         {
             var values = CurrentPresetValues(preset.Type);
             if (values.Count == 0) { SetStatus($"Program {preset.Type.ToLowerInvariant()} values before storing this preset"); return; }
@@ -582,7 +600,7 @@ public partial class MainWindow : Window
         SetStatus($"Applied {preset.Name}");
     }
 
-    private void CompleteStore() { _storePending = false; StoreButton.Content = "STORE"; }
+    private void CompleteStore() { _storePending = false; StoreButton.Content = "STORE"; CommandLineText.Clear(); }
 
     private Dictionary<ParameterAddress, CueValue> CurrentColourValues() => _programmer
         .Where(item => item.Value.Kind == ParameterKind.Colour && _programmingEngine.BelongsToSelection(item.Key, CurrentSelections))
@@ -658,6 +676,9 @@ public partial class MainWindow : Window
     {
         var group = (sender as Button)?.Tag as string ?? "Dimmer";
         SelectFeatureGroup(group);
+        var tokens = ConsoleCommandParser.Parse(CommandLineText.Text);
+        if (tokens.FirstOrDefault() is "store" or "update")
+            AppendProgrammerKeyword(group switch { "Dimmer" => "INTENSITY", "Color" => "COLOUR", _ => group.ToUpperInvariant() });
     }
 
     private void SelectFeatureGroup(string group)
@@ -677,10 +698,8 @@ public partial class MainWindow : Window
     private void ShowPresetType(string type)
     {
         _activePresetType = type;
-        var latestStored = ColourPresets.Where(item => item.Type == type && item.Values.Count > 0).Select(item => item.Slot).DefaultIfEmpty(0).Max();
-        var lastVisible = Math.Min(28, latestStored + 1);
         VisiblePresets.Clear();
-        foreach (var preset in ColourPresets.Where(item => item.Type == type && item.Slot <= lastVisible)) VisiblePresets.Add(preset);
+        foreach (var preset in ColourPresets.Where(item => item.Type == type)) VisiblePresets.Add(preset);
         if (PresetPoolTitle is not null) PresetPoolTitle.Text = $"{type.ToUpperInvariant()} PRESET POOL";
     }
 
@@ -733,6 +752,17 @@ public partial class MainWindow : Window
     }
 
     private IEnumerable<KeyValuePair<ParameterAddress, CueValue>> HardProgrammerValues() => _programmer.Where(item => !_presetOwnedAddresses.ContainsKey(item.Key));
+
+    private IEnumerable<KeyValuePair<ParameterAddress, CueValue>> HardProgrammerValues(IReadOnlySet<string> requested)
+    {
+        var kinds = new HashSet<ParameterKind>();
+        if (requested.Contains("intensity") || requested.Contains("dimmer")) kinds.Add(ParameterKind.Intensity);
+        if (requested.Contains("position")) kinds.Add(ParameterKind.Position);
+        if (requested.Contains("colour") || requested.Contains("color")) kinds.Add(ParameterKind.Colour);
+        if (requested.Contains("gobo") || requested.Contains("beam") || requested.Contains("focus")) kinds.Add(ParameterKind.Beam);
+        if (requested.Contains("control")) kinds.Add(ParameterKind.Other);
+        return HardProgrammerValues().Where(item => kinds.Contains(item.Value.Kind));
+    }
 
     private void ReleasePresetOwnership(ParameterKind kind)
     {
@@ -972,7 +1002,7 @@ public partial class MainWindow : Window
 
     private async Task SendLiveOutputAsync()
     {
-        if (!_online || OutputEnabledCheck?.IsChecked != true) return;
+        if (!_online) return;
         try { await SendConfiguredOutputsAsync(); }
         catch (Exception exception) { SetStatus($"Output failed: {exception.Message}"); }
     }
@@ -984,10 +1014,10 @@ public partial class MainWindow : Window
             _followDueUtc = null;
             if (_playbackIndex < _cueStack.Cues.Count - 1) { _playbackIndex++; ShowPlaybackCue(); }
         }
-        if (_outputSending || !_online || OutputEnabledCheck.IsChecked != true) return;
+        if (_outputSending || !_online) return;
         _outputSending = true;
         try { await SendConfiguredOutputsAsync(); }
-        catch (Exception exception) { OutputEnabledCheck.IsChecked = false; SetStatus($"Output stopped: {exception.Message}"); }
+        catch (Exception exception) { _online = false; UpdateOnlineControl(); SetStatus($"Output stopped: {exception.Message}"); }
         finally { _outputSending = false; }
     }
 
@@ -1039,10 +1069,15 @@ public partial class MainWindow : Window
     private void OnlineToggle_Click(object sender, RoutedEventArgs e)
     {
         _online = !_online;
-        OnlineButton.Content = _online ? "ONLINE" : "OFFLINE";
-        OnlineButton.Background = _online ? System.Windows.Media.Brushes.SeaGreen : System.Windows.Media.Brushes.DimGray;
+        UpdateOnlineControl();
         SetStatus(_online ? "Output online" : "Output offline — live data remains available locally");
         EchoCommand(_online ? "ONLINE" : "OFFLINE");
+    }
+
+    private void UpdateOnlineControl()
+    {
+        OnlineButton.Content = _online ? "LIVE OUTPUT: ONLINE" : "LIVE OUTPUT: OFFLINE";
+        OnlineButton.Background = _online ? System.Windows.Media.Brushes.SeaGreen : System.Windows.Media.Brushes.DimGray;
     }
 
     private void OpenSettings_Click(object sender, RoutedEventArgs e) => OpenSettings(0);
@@ -1334,6 +1369,13 @@ public partial class MainWindow : Window
         if (sender is not Button { Tag: SelectionPresetRow preset }) return;
         if (ConsumePendingDelete()) { DeleteGroup(preset); return; }
         if (PendingCommandIs("rename")) { CommandLineText.Clear(); RenameSelectionPreset(preset); return; }
+        if (_storePending)
+        {
+            var selections = _programmingEngine.ExpandWholeFixturesToParts(CurrentSelections).ToArray();
+            if (selections.Length == 0) { SetStatus("Select fixtures or parts before storing a fixture group"); return; }
+            SelectionPresets[SelectionPresets.IndexOf(preset)] = new(preset.Slot, preset.Name, selections);
+            EchoCommand($"STORE GROUP {preset.Slot}"); SetStatus($"Updated fixture group {preset.Slot}"); CompleteStore(); return;
+        }
         ApplySelectionPreset(preset);
         ProgrammerTitle.Text = $"PROGRAMMER — {preset.Name.ToUpperInvariant()} ({preset.OrderDescription})"; EchoCommand($"GROUP {preset.Slot}"); SetStatus($"Selected {preset.Name} in stored order: {preset.OrderDescription}");
     }
@@ -1347,6 +1389,22 @@ public partial class MainWindow : Window
     private void ToggleFixtureDrawer_Click(object sender, RoutedEventArgs e)
     {
         var show = FixtureDrawerColumn.Width.Value == 0; FixtureDrawerColumn.Width = show ? new GridLength(280) : new GridLength(0); FixtureDrawer.Visibility = show ? Visibility.Visible : Visibility.Collapsed; FixtureDrawerButton.Content = show ? "HIDE FIXTURE DRAWER" : "SHOW FIXTURE DRAWER";
+    }
+
+    private void ToggleControlsDrawer_Click(object sender, RoutedEventArgs e)
+    {
+        var show = ControlsDrawerColumn.Width.Value == 0;
+        ControlsDrawerColumn.Width = show ? new GridLength(210) : new GridLength(0);
+        ControlsDrawer.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        ControlsDrawerButton.Content = show ? "HIDE CONTROLS" : "SHOW CONTROLS";
+    }
+
+    private void TogglePanTiltDrawer_Click(object sender, RoutedEventArgs e)
+    {
+        var show = PanTiltDrawerColumn.Width.Value == 0;
+        PanTiltDrawerColumn.Width = show ? new GridLength(300) : new GridLength(0);
+        PanTiltDrawer.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        PanTiltDrawerButton.Content = show ? "HIDE PAN / TILT" : "SHOW PAN / TILT";
     }
 
     private void OpenEffectPool_Click(object sender, RoutedEventArgs e)
@@ -1385,7 +1443,9 @@ public partial class MainWindow : Window
     private void EffectPresetButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: StoredEffectRow effect }) return;
+        if (ConsumePendingDelete()) { Effects.Remove(effect); _activeEffectSlots.Remove(effect.Slot); _cueEffectSlots.Remove(effect.Slot); EchoCommand($"DELETE EFFECT {effect.Slot}"); SetStatus($"Deleted effect {effect.Slot}"); return; }
         if (PendingCommandIs("rename")) { CommandLineText.Clear(); RenameEffect(effect); return; }
+        if (_storePending) { effect.Program = CloneEffectProgram(_effectProgram); effect.Selections = CurrentSelections.ToArray(); EffectsView.Items.Refresh(); EchoCommand($"STORE EFFECT {effect.Slot}"); SetStatus($"Updated effect {effect.Slot}"); CompleteStore(); return; }
         if (effect.Program.Scope == EffectScope.Selective && _armedEffectSlot != effect.Slot)
         {
             _selectionOrder.Clear(); _selectedFixtures.Clear(); _selectedParts.Clear();
@@ -1517,6 +1577,17 @@ public partial class MainWindow : Window
         var effect = Effects.FirstOrDefault(item => item.Slot == slot) ?? throw new InvalidOperationException($"Effect {slot} does not exist."); if (string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("A name is required."); effect.Name = name.Trim(); EffectsView.Items.Refresh(); SetStatus($"Renamed effect {slot}");
     }
 
+    private void RenameFixtureCommand(int id, string name)
+    {
+        var row = Fixtures.FirstOrDefault(item => item.Id == id) ?? throw new InvalidOperationException($"Fixture {id} does not exist.");
+        var patch = _fixturePatch.Find(id) ?? throw new InvalidOperationException($"Fixture {id} does not exist.");
+        if (string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("A fixture name is required.");
+        var renamed = new PatchedFixture(patch.Id, name.Trim(), patch.Manufacturer, patch.Model, patch.Mode, patch.Universe, patch.Address, patch.ChannelCount);
+        _fixturePatch.Remove(id); _fixturePatch.Add(renamed);
+        if (_patchedDefinitions.TryGetValue(id, out var definition) && _patchedModes.TryGetValue(id, out var mode)) _programmingEngine.Register(renamed, definition, mode);
+        Fixtures[Fixtures.IndexOf(row)] = FixtureRow.From(renamed); RefreshProgrammerFixtureTree(); SetStatus($"Renamed fixture {id}");
+    }
+
     private void RenameCueListCommand(int slot, string name)
     {
         if (slot < 1 || slot > CueLists.Count || string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("A valid cue list and name are required."); _cueLists[slot - 1].Name = name.Trim(); CueLists[slot - 1] = new(slot, name.Trim()); SetStatus($"Renamed cue list {slot}");
@@ -1555,6 +1626,12 @@ public partial class MainWindow : Window
 
     private void CommandLineText_KeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Back)
+        {
+            RemoveLastCommandStroke();
+            e.Handled = true;
+            return;
+        }
         if (e.Key != Key.Enter) return;
         var command = CommandLineText.Text.Trim(); CommandLineText.Clear(); e.Handled = true;
         if (command.Length > 0) ExecuteCommand(command);
@@ -1568,6 +1645,10 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Back && Keyboard.FocusedElement == CommandLineText)
+        {
+            RemoveLastCommandStroke(); e.Handled = true; return;
+        }
         if (e.Key == Key.Escape && ConsumePendingDelete())
         {
             SetStatus("Delete cancelled");
@@ -1622,6 +1703,26 @@ public partial class MainWindow : Window
         CommandLineText.Text += $"{prefix}{word} "; CommandLineText.CaretIndex = CommandLineText.Text.Length;
     }
 
+    private void CommandKeyword_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string keyword }) AppendCommandWord(keyword);
+    }
+
+    private void AppendProgrammerKeyword(string keyword)
+    {
+        var tokens = ConsoleCommandParser.Parse(CommandLineText.Text);
+        if (tokens.Contains(keyword.ToLowerInvariant())) return;
+        var needsJoin = tokens.Any(IsProgrammerKeyword);
+        if (needsJoin) AppendCommandWord("+");
+        AppendCommandWord(keyword);
+    }
+
+    private void RemoveLastCommandStroke()
+    {
+        CommandLineText.Text = ConsoleCommandParser.RemoveLastStroke(CommandLineText.Text);
+        CommandLineText.CaretIndex = CommandLineText.Text.Length;
+    }
+
     private void ExecuteCommand(string input)
     {
         var tokens = ConsoleCommandParser.Parse(input);
@@ -1629,6 +1730,7 @@ public partial class MainWindow : Window
         EchoCommand(input.ToUpperInvariant());
         try
         {
+            if (TryExecuteFilteredCueCommand(tokens)) return;
             if (tokens.SequenceEqual(["clear"]) || tokens.SequenceEqual(["clearselection"])) { ClearSelectionCommand(); return; }
             if (tokens.SequenceEqual(["clear", "clear"]) || tokens.SequenceEqual(["clearactive"])) { ClearActiveCommand(); return; }
             if (tokens.SequenceEqual(["clear", "clear", "clear"]) || tokens.SequenceEqual(["clearall"])) { ClearAllCommand(); return; }
@@ -1652,6 +1754,16 @@ public partial class MainWindow : Window
                     ?? throw new InvalidOperationException("Preset slot does not exist."));
                 return;
             }
+            if (tokens is ["delete", "effect", var effect] && int.TryParse(effect, out var deleteEffectSlot))
+            {
+                var row = Effects.FirstOrDefault(item => item.Slot == deleteEffectSlot) ?? throw new InvalidOperationException($"Effect {deleteEffectSlot} does not exist.");
+                Effects.Remove(row); _activeEffectSlots.Remove(deleteEffectSlot); _cueEffectSlots.Remove(deleteEffectSlot); SetStatus($"Deleted effect {deleteEffectSlot}"); return;
+            }
+            if (tokens is ["delete", "fixture", var fixture] && int.TryParse(fixture, out var deleteFixtureId))
+            {
+                FixtureGrid.SelectedItem = Fixtures.FirstOrDefault(item => item.Id == deleteFixtureId) ?? throw new InvalidOperationException($"Fixture {deleteFixtureId} does not exist.");
+                RemoveFixture_Click(this, new RoutedEventArgs()); return;
+            }
             if (tokens.SequenceEqual(["update"])) { UpdateCue_Click(this, new RoutedEventArgs()); return; }
             if (tokens.Length >= 2 && tokens[0] == "group" && int.TryParse(tokens[1], out var groupSlot)) { RecallGroup(groupSlot); return; }
             if (tokens.Length >= 2 && tokens[0] == "selection" && int.TryParse(tokens[1], out var selectionSlot)) { var preset = SelectionPresets.FirstOrDefault(item => item.Slot == selectionSlot) ?? throw new InvalidOperationException($"Group {selectionSlot} does not exist."); ApplySelectionPreset(preset); SetStatus($"Selected {preset.Name}"); return; }
@@ -1661,6 +1773,8 @@ public partial class MainWindow : Window
             if (tokens.SequenceEqual(["run", "chaser"])) { ToggleChaser_Click(this, new RoutedEventArgs()); return; }
             if (tokens.SequenceEqual(["clear", "chaser"])) { ClearChaser_Click(this, new RoutedEventArgs()); return; }
             if (tokens.SequenceEqual(["store", "group"])) { StoreFixtureGroup_Click(this, new RoutedEventArgs()); return; }
+            if (tokens is ["store", "group", var groupNumber] && int.TryParse(groupNumber, out var storeGroupSlot)) { StoreGroupFromCommand(storeGroupSlot); return; }
+            if (tokens is ["store", "effect", var effectNumber] && int.TryParse(effectNumber, out var storeEffectSlot)) { StoreEffectFromCommand(storeEffectSlot); return; }
             if (tokens.Length >= 4 && (tokens[0] is "store" or "update") && tokens[1] == "preset" && int.TryParse(tokens[3], out var storeSlot)) { StorePresetFromCommand(PresetType(tokens[2]), storeSlot); return; }
             if (tokens.Length >= 3 && tokens[0] == "select" && tokens[1] == "cuelist" && int.TryParse(tokens[2], out var selectedList)) { SelectCueList(selectedList); return; }
             if (tokens.Length >= 5 && tokens[0] == "update" && tokens[1] == "cuelist" && int.TryParse(tokens[2], out var updateList) && tokens[3] == "cue") { UpdateCueFromCommand(updateList, tokens[4]); return; }
@@ -1677,6 +1791,7 @@ public partial class MainWindow : Window
             if (tokens.Length >= 4 && tokens[0] == "rename" && tokens[1] == "group" && int.TryParse(tokens[2], out var renameGroupSlot)) { RenameGroupCommand(renameGroupSlot, string.Join(' ', input.Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(3))); return; }
             if (tokens.Length >= 4 && tokens[0] == "rename" && tokens[1] is "selection" or "fixturepreset" && int.TryParse(tokens[2], out var renameSelectionSlot)) { RenameSelectionCommand(renameSelectionSlot, string.Join(' ', input.Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(3))); return; }
             if (tokens.Length >= 4 && tokens[0] == "rename" && tokens[1] == "effect" && int.TryParse(tokens[2], out var renameEffectSlot)) { RenameEffectCommand(renameEffectSlot, string.Join(' ', input.Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(3))); return; }
+            if (tokens.Length >= 4 && tokens[0] == "rename" && tokens[1] == "fixture" && int.TryParse(tokens[2], out var renameFixtureId)) { RenameFixtureCommand(renameFixtureId, string.Join(' ', input.Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(3))); return; }
             if (tokens.Length >= 4 && tokens[0] == "rename" && tokens[1] == "cuelist" && int.TryParse(tokens[2], out var renameCueListSlot)) { RenameCueListCommand(renameCueListSlot, string.Join(' ', input.Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(3))); return; }
             if (tokens.Length >= 4 && tokens[0] == "rename" && tokens[1] == "cue") { RenameCueCommand(tokens[2], string.Join(' ', input.Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(3))); return; }
             if (tokens.Length >= 4 && tokens[0] == "rename" && int.TryParse(tokens[2], out var shortRenameSlot)) { RenamePreset(PresetType(tokens[1]), shortRenameSlot, string.Join(' ', input.Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(3))); return; }
@@ -1726,6 +1841,63 @@ public partial class MainWindow : Window
         preset.Name = $"{type} {slot}";
         if (type == "Colour" && TryReadRgb(out var red, out var green, out var blue)) preset.Swatch = $"#{red:X2}{green:X2}{blue:X2}";
         ShowPresetType(type); ColourPresetList.Items.Refresh(); SetStatus($"Stored preset {type} {slot}");
+    }
+
+    private bool TryExecuteFilteredCueCommand(string[] tokens)
+    {
+        if (tokens.Length < 3 || tokens[0] is not ("store" or "update")) return false;
+        var cueToken = Array.LastIndexOf(tokens, "cue");
+        if (cueToken < 1 || cueToken + 1 >= tokens.Length) return false;
+        var requested = tokens[1..cueToken].Where(token => token != "+").ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (requested.Count == 0 || !requested.All(IsProgrammerKeyword)) return false;
+        StoreFilteredCue(tokens[cueToken + 1], requested);
+        return true;
+    }
+
+    private static bool IsProgrammerKeyword(string token) => token is
+        "intensity" or "dimmer" or "position" or "colour" or "color" or "gobo" or "beam" or "focus" or "control";
+
+    private void StoreFilteredCue(string number, IReadOnlySet<string> requested)
+    {
+        var values = HardProgrammerValues(requested).ToArray();
+        var references = _activePresetReferences.Where(reference => requested.Contains(reference.Type.ToLowerInvariant()) ||
+            reference.Type == "Intensity" && requested.Contains("dimmer") || reference.Type == "Colour" && requested.Contains("color")).ToArray();
+        if (values.Length == 0 && references.Length == 0) throw new InvalidOperationException("The requested programmer attributes contain no values.");
+
+        var index = _cueStack.Cues.ToList().FindIndex(cue => cue.Number == number);
+        if (index < 0)
+        {
+            var cue = new Cue(number, $"Cue {number}") { FadeIn = TimeSpan.FromSeconds(_defaultCueTimeSeconds) };
+            foreach (var (address, value) in values) cue.SetValue(address, value.Value, value.Kind);
+            foreach (var reference in references) cue.AddPresetReference(reference);
+            _cueStack.Add(cue); Cues.Add(CueRow.From(cue)); index = Cues.Count - 1;
+        }
+        else
+        {
+            _cueStack.Update(index, values);
+            foreach (var reference in references) _cueStack.Cues[index].AddPresetReference(reference);
+            Cues[index].UpdateFrom(_cueStack.Cues[index]); CueGrid.Items.Refresh();
+        }
+        CueGrid.SelectedIndex = index;
+        SetStatus($"Stored {string.Join(" + ", requested.Select(item => item.ToUpperInvariant()))} in cue {number}");
+    }
+
+    private void StoreGroupFromCommand(int slot)
+    {
+        var selections = _programmingEngine.ExpandWholeFixturesToParts(CurrentSelections).ToArray();
+        if (selections.Length == 0) throw new InvalidOperationException("Select fixtures or parts before storing a fixture group.");
+        var existing = SelectionPresets.FirstOrDefault(item => item.Slot == slot);
+        var replacement = new SelectionPresetRow(slot, existing?.Name ?? $"Group {slot}", selections);
+        if (existing is null) SelectionPresets.Add(replacement); else SelectionPresets[SelectionPresets.IndexOf(existing)] = replacement;
+        SetStatus($"Stored fixture group {slot}");
+    }
+
+    private void StoreEffectFromCommand(int slot)
+    {
+        var existing = Effects.FirstOrDefault(item => item.Slot == slot);
+        if (existing is null) Effects.Add(new StoredEffectRow { Slot = slot, Name = $"Effect {slot}", Program = CloneEffectProgram(_effectProgram), Selections = CurrentSelections.ToArray() });
+        else { existing.Program = CloneEffectProgram(_effectProgram); existing.Selections = CurrentSelections.ToArray(); EffectsView.Items.Refresh(); }
+        SetStatus($"Stored effect {slot}");
     }
 
     private void UpdateCueFromCommand(int cueListNumber, string cueNumber)
@@ -1931,6 +2103,7 @@ public sealed class ColourPresetRow(string type, int slot)
     public PresetScope Scope { get; set; } = type == "Position" ? PresetScope.Individual : PresetScope.Global;
     public string ScopeShort => Scope switch { PresetScope.Global => "G", PresetScope.FixtureType => "T", _ => "I" };
     public string BorderColour => Values.Count == 0 ? "#454A4E" : "#00D7D7";
+    public Visibility FilledVisibility => Values.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
     public Dictionary<ParameterAddress, CueValue> Values { get; } = [];
 }
 

@@ -52,6 +52,14 @@ public sealed class PlaybackFeaturesTests
         Assert.Equal(["clear", "clear", "clear"], ConsoleCommandParser.Parse("xxx"));
     }
 
+    [Theory]
+    [InlineData("STORE PRESET COLOUR 1", "STORE PRESET COLOUR ")]
+    [InlineData("RENAME ", "")]
+    [InlineData("fixture 12", "fixture ")]
+    [InlineData("   ", "")]
+    public void CommandParser_BackspaceRemovesTheLastCommandStroke(string input, string expected)
+        => Assert.Equal(expected, ConsoleCommandParser.RemoveLastStroke(input));
+
     [Fact]
     public void ConsoleEffect_DistributesPhaseInSelectionOrderAndBlocks()
     {
